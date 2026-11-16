@@ -1,65 +1,88 @@
-// rafce
-import { MapPin, Trash2 } from "lucide-react";
-import React from "react";
-import useDutyStore from "../../store/useDutyStore";
+import { useState } from "react";
+import { Plus, X } from "lucide-react";
+import { Avatar, StatusDot } from "../ui";
+import { needOf, statusOf } from "../../lib/shifts";
+import { drag } from "../../lib/drag";
 
-const LocationList = () => {
-  // Js
-  const locations = useDutyStore((s) => s.locations);
-  // console.log(locations);
-  const assignPerson = useDutyStore((state)=>state.assignPerson);
-  const  assignments = useDutyStore((state)=>state.assignments);
+/**
+ * รายการจุดเวรของกะที่เลือก ลากพนักงานมาวางที่แถวได้
+ * onDrop(item, location)  item จาก lib/drag
+ */
+export default function LocationsList({ locations, assignments, shift, selectedId, onSelect, onDrop, onRemove, onAdd }) {
+  const [over, setOver] = useState(null);
 
-  
-  console.log(assignments)
-
-
-  const onDropToLocation = async (e, locationId) => {
-    const personId = e.dataTransfer.getData('text/plain')
-    // console.log(personId, locationId);
-    await assignPerson(personId,locationId)
-  };
   return (
-    <div className="w-80 bg-white border-l shadow-lg border-gray-200">
-      <div className="p-6 border-b border-gray-200 bg-purple-100">
-        <div className="flex gap-4 items-center">
-          <MapPin className="text-blue-500" size={32} />
-          <h2 className="text-2xl font-semibold">จุดเข้าเวร</h2>
-        </div>
-      </div>
+    <ul>
+      {locations.map((loc) => {
+        const people = assignments.filter((a) => a.location_id === loc.id);
+        const need = needOf(loc, shift);
+        const status = statusOf(people.length, need);
+        const selected = loc.id === selectedId;
+        const isOver = over === loc.id;
+        const dragging = drag.get();
+        const full = people.length >= need;
 
-      <div className="p-4 space-y-3">
-        {/* loop */}
-        {locations.map((item) => {
-          return (
-            <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => onDropToLocation(e,item.id)}
-              key={item.id}
-              className="border-2 border-dashed rounded-lg border-gray-400
-          bg-gray-100"
-            >
-              <div className="flex justify-between p-2">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{item.name}</h3>
-                  <p className="text-sm text-gray-500">
-                    ..../ {item.maxCapacity}
-                  </p>
-                </div>
+        const dropProps = {
+          onDragOver: (e) => { e.preventDefault(); setOver(loc.id); },
+          onDragLeave: (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOver(null); },
+          onDrop: (e) => { e.preventDefault(); setOver(null); const it = drag.get(); drag.end(); if (it) onDrop(it, loc); },
+        };
 
-                <button
-                  className="text-red-500 
-            hover:bg-red-100 rounded-md p-2"
-                >
-                  <Trash2 size={18} />
-                </button>
+        return (
+          <li key={loc.id} {...dropProps}
+            className={`transition ${selected || isOver ? "bg-paper rounded-2xl my-1.5" : "border-b border-line"} ${isOver ? (full ? "ring-2 ring-danger/50" : "ring-2 ring-brand/60") : ""}`}>
+            <button onClick={() => onSelect(loc.id)} className="w-full flex items-center gap-3 px-3 py-3.5 text-left">
+              <StatusDot status={status} />
+              <span className="flex-1 min-w-0">
+                <span className="block font-semibold truncate">{loc.name}</span>
+                <span className="block text-xs text-mute">ต้องการ {need} คน</span>
+              </span>
+              {!selected && (
+                <span className="flex">
+                  {people.length
+                    ? people.slice(0, 3).map((p, i) => (
+                        <span key={p.id} className={i ? "-ml-1.5" : ""} style={{ boxShadow: "0 0 0 2px #fff", borderRadius: 999 }}>
+                          <Avatar name={p.user_name} size={28} />
+                        </span>
+                      ))
+                    : <span className="text-xs text-mute">ยังไม่มีคน</span>}
+                </span>
+              )}
+              <span className="text-sm font-semibold w-8 text-right">{people.length}/{need}</span>
+            </button>
+
+            {(selected || isOver) && (
+              <div className="px-3 pb-3 flex flex-col gap-3">
+                {people.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {people.map((p) => (
+                      <span key={p.id} draggable
+                        onDragStart={(e) => drag.start(e, { kind: "asg", id: p.id, name: p.user_name, locationId: loc.id })}
+                        onDragEnd={drag.end}
+                        title="ลากไปจุดอื่นเพื่อย้าย"
+                        className="inline-flex items-center gap-2 h-[34px] pl-1 pr-2 rounded-full bg-white border border-line text-[13px] font-semibold cursor-grab active:cursor-grabbing">
+                        <Avatar name={p.user_name} size={26} />
+                        {p.user_name.split(" ")[0]}
+                        <button onClick={() => onRemove(p)} aria-label={`ถอน ${p.user_name} ออก`} className="text-faint hover:text-danger"><X size={14} /></button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {isOver && dragging ? (
+                  <div className={`h-10 rounded-xl border-[1.5px] border-dashed flex items-center justify-center gap-2 text-[13px] font-semibold ${full ? "border-danger bg-danger-soft text-danger" : "border-brand bg-brand-soft text-brand"}`}>
+                    {full ? `จุดนี้ครบ ${need} คนแล้ว` : <><Plus size={16} />ปล่อยเพื่อ{dragging.kind === "asg" ? "ย้าย" : "เพิ่ม"} {dragging.name}</>}
+                  </div>
+                ) : !full ? (
+                  <button onClick={() => onAdd(loc)}
+                    className="h-10 rounded-xl border-[1.5px] border-dashed border-line text-mute hover:border-ink hover:text-ink flex items-center justify-center gap-2 text-[13px] font-semibold">
+                    <Plus size={16} />เพิ่มคน หรือลากพนักงานมาวางที่นี่
+                  </button>
+                ) : null}
               </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
-};
-
-export default LocationList;
+}
