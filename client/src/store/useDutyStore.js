@@ -1,69 +1,66 @@
+// ข้อมูลหน้าจัดเวรของ Admin
 import { create } from "zustand";
 import { api } from "../lib/api";
+import { today } from "../lib/shifts";
 
-const dutyStore = (set,get) =>({
-    personnel : [],
-    locations : [],
-    assignments : [],
-    selectedLocationId : null,
+const useDutyStore = create((set, get) => ({
+  date: today(),
+  shift: "MORNING",
+  locations: [],
+  staff: [], // เฉพาะ role USER
+  assignments: [], // ของวันที่ + กะที่เลือก
+  selectedId: null, // จุดที่เลือกอยู่
+  loading: false,
 
-    fetchAll:async() => {
-    //    fn body
+  setDate: (date) => { set({ date }); get().fetchAssignments(); },
+  setShift: (shift) => { set({ shift }); get().fetchAssignments(); },
+  select: (selectedId) => set({ selectedId }),
+
+  fetchBase: async () => {
+    const [locations, users] = await Promise.all([api.get("/locations"), api.get("/users")]);
+    set({ locations, staff: users.filter((u) => u.role === "USER") });
+  },
+
+  fetchAssignments: async () => {
+    const { date, shift } = get();
+    set({ loading: true });
     try {
-        // const personnel = await api.get('/personnel');
-        // const locations = await api.get('/locations');
-        // const assignments = await api.get('/locationPersonnel');
-
-        const [personnel,locations,assignments] = await Promise.all([
-            api.get('/personnel'),
-            api.get('/locations'),
-            api.get('/locationPersonnel'),
-        ])
-        // console.log("kaika",kaika[0])
-       
-        set({
-            personnel:personnel,
-            locations:locations,
-            assignments: assignments
-        });
-    } catch (error) {
-        console.log(error)
+      const assignments = await api.get("/assignments", { date, shift });
+      // กันข้อมูลเก่าทับ ถ้าผู้ใช้เปลี่ยนวัน/กะระหว่างรอ
+      if (get().date === date && get().shift === shift) set({ assignments });
+    } finally {
+      set({ loading: false });
     }
-    },
-    
-    addLocation:async(lat,lng,name)=>{
-        // fn body
-       try {
-        
-        const res = await api.post('/locations',
+  },
 
-            {
-                name:name,
-                lat:Number(lat),
-                lng:Number(lng),
-                maxCapacity:5
-            }
-        );
-         await get().fetchAll()
+  // จัดคนเข้าจุด  (force = ยืนยันแล้วแม้เป็นเวรต่อกัน)
+  assign: async (userId, locationId, force = false) => {
+    const { date, shift } = get();
+    await api.post("/assignments", { userId, locationId, date, shift, force });
+    await get().fetchAssignments();
+  },
 
+  move: async (assignmentId, locationId) => {
+    await api.patch(`/assignments/${assignmentId}`, { locationId });
+    await get().fetchAssignments();
+  },
 
-       } catch (error) {
-         console.log("Add Location Err",error)
-       }
-    },
-    assignPerson: async(personId,LocationId)=>{
-        // fn body
-        try {
-            
-          console.log(personId,LocationId) 
-          const res = await api.post('/locationPersonnel',{personId,LocationId})
-        } catch (error) {
-          console.log(error) 
-        }
-    }
+  remove: async (assignmentId) => {
+    await api.del(`/assignments/${assignmentId}`);
+    await get().fetchAssignments();
+  },
 
-})
+  copy: async (mode, from, to) => {
+    const r = await api.post("/assignments/copy", { mode, from, to });
+    await get().fetchAssignments();
+    return r;
+  },
 
-const useDutyStore = create(dutyStore);
+  addLocation: async (data) => {
+    const loc = await api.post("/locations", data);
+    set((s) => ({ locations: [...s.locations, loc], selectedId: loc.id }));
+    return loc;
+  },
+}));
 
 export default useDutyStore;

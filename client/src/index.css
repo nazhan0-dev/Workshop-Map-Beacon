@@ -1,1 +1,120 @@
 @import "tailwindcss";
+@import "@fontsource/ibm-plex-sans-thai/400.css";
+@import "@fontsource/ibm-plex-sans-thai/500.css";
+@import "@fontsource/ibm-plex-sans-thai/600.css";
+@import "@fontsource/ibm-plex-sans-thai/700.css";
+
+/* สีและฟอนต์ของระบบ ใช้เป็นคลาส Tailwind ได้ เช่น bg-paper text-ink text-mute bg-brand */
+@theme {
+  --font-sans: "IBM Plex Sans Thai", system-ui, sans-serif;
+  --color-paper: #f4f5f3;
+  --color-ink: #17191c;
+  --color-mute: #70757b;
+  --color-faint: #a3a7ac;
+  --color-line: #e7e9e5;
+  --color-track: #eff0ee;
+  --color-brand: #2e9e68;
+  --color-brand-soft: #e5f4ec;
+  --color-warn: #d4862a;
+  --color-warn-soft: #fbf1e3;
+  --color-danger: #d64c43;
+  --color-danger-soft: #fbeae8;
+  --color-me: #2f6fe4;
+}
+
+@layer base {
+  body {
+    @apply bg-paper text-ink antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+}
+
+/* การ์ดลอยพื้นขาว */
+.surface {
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 1px 2px rgb(23 25 28 / 0.04), 0 8px 24px rgb(23 25 28 / 0.05);
+}
+
+/* ---------- หมุดบนแผนที่ (สร้างเป็น HTML ใน MapView) ---------- */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: #edefeb;
+}
+.pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+.pin-c {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 6px 16px rgb(23 25 28 / 0.18);
+  transition: transform 0.15s;
+}
+.pin:hover .pin-c {
+  transform: scale(1.06);
+}
+.pin-dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2.5px #fff;
+}
+.pin-l {
+  margin-top: 6px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 3px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgb(23 25 28 / 0.1);
+}
+.pin-l i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+}
+.pin.sel .pin-c {
+  width: 46px;
+  height: 46px;
+  background: var(--color-ink);
+  color: #fff;
+}
+.pin.sel .pin-l {
+  background: var(--color-ink);
+  color: #fff;
+  padding: 5px 10px;
+  font-size: 13px;
+}
+.me-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-me);
+  box-shadow: 0 0 0 3px #fff, 0 0 0 14px rgb(47 111 228 / 0.15);
+  transform: translate(-50%, -50%);
+  position: absolute;
+}
