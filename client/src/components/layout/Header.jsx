@@ -1,51 +1,12 @@
-// rafce
-import { Plus, X } from "lucide-react";
-import React from "react";
-
-const Header = ({ adding, setAdding }) => {
-  // Js
-  // console.log(adding);
-
+// หัวหน้าเพจ: ชื่อหน้า + ปุ่มด้านขวา
+export default function Header({ title, subtitle, children }) {
   return (
-    <div
-      className="p-4 bg-white shadow-md border-b
-        border-gray"
-    >
-      <div className="flex justify-between">
-        <h2 className="text-2xl font-semibold text-gray-800">
-          ระบบจัดการเวรประจำจุด
-        </h2>
-        <button
-        onClick={() => setAdding((s) => !s)}
-        className = {` flex items-center gap-2 p-2 rounded-lg
-          ${
-            adding 
-            ? "bg-red-500 text-white hover:bg-red-600"
-            : "bg-green-500 text-white hover:bg-green-600"
-          }
-          `}
-        >
-
-          {
-            adding
-            ? (<> <X size={20}/> ยกเลิก </>)
-            : (<><Plus size={20}/> เพิ่มจุดเวร </>)
-          }
-          
-          </button>
-           </div>
-
-          {
-            adding &&  <div className="mt-2 text-sm text-amber-600 bg-amber-100 p-4 rounded-lg border">
-            คลิกบนแผนที่เพื่อเพิ่มต่ำแหนงเข้าเวร
-          </div>
-          }
-         
-
-
-     
+    <div className="flex items-center gap-3 flex-wrap px-4 pt-5 pb-3 md:px-1 md:pt-2">
+      <div className="flex-1 min-w-0">
+        <h1 className="text-2xl md:text-[28px] font-bold tracking-tight">{title}</h1>
+        {subtitle && <p className="text-sm text-mute">{subtitle}</p>}
+      </div>
+      {children}
     </div>
   );
-};
-
-export default Header;
+}
