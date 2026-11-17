@@ -41,6 +41,83 @@
   box-shadow: 0 1px 2px rgb(23 25 28 / 0.04), 0 8px 24px rgb(23 25 28 / 0.05);
 }
 
+/* ---------- แถบเมนู ---------- */
+/* ไฮไลต์เมนูที่เลือก เลื่อนไปมาแบบมีเด้ง */
+.nav-pill {
+  transition: top 0.38s cubic-bezier(.3, 1.3, .5, 1), left 0.38s cubic-bezier(.3, 1.3, .5, 1);
+  animation: login-fade-in 0.3s ease-out both;
+}
+/* เมนูไล่กันเลื่อนเข้ามาตอนเปิดหน้า */
+.nav-in {
+  animation: nav-in 0.45s cubic-bezier(.2, .8, .2, 1) both;
+}
+@keyframes nav-in {
+  from { opacity: 0; transform: translateX(-10px); }
+}
+/* ไอคอนเด้งตอนถูกเลือก */
+.nav-bounce {
+  animation: nav-bounce 0.45s cubic-bezier(.3, 1.6, .5, 1);
+}
+@keyframes nav-bounce {
+  0% { scale: 0.6; }
+  60% { scale: 1.15; }
+  100% { scale: 1; }
+}
+/* ---------- ส่วนควบคุมและรายการ ---------- */
+/* พื้นขาวของปุ่มแบ่งช่อง / เส้นใต้แท็บ เลื่อนไปมา */
+.seg-pill,
+.tab-bar {
+  transition: transform 0.35s cubic-bezier(.3, 1.25, .5, 1), width 0.35s cubic-bezier(.3, 1.25, .5, 1);
+}
+/* ตัวเลขเด้งเมื่อค่าเปลี่ยน */
+.pop-in {
+  animation: pop-in 0.35s cubic-bezier(.3, 1.6, .5, 1);
+}
+@keyframes pop-in {
+  0% { scale: 0.6; opacity: 0.3; }
+  60% { scale: 1.18; }
+  100% { scale: 1; opacity: 1; }
+}
+/* วันที่เลื่อนเข้ามาตามทิศที่กด */
+/* (ใส่ inline-block เองกับ <span> เพราะ transform ไม่ทำงานกับ inline) */
+.slide-from-right { animation: slide-x 0.3s cubic-bezier(.2, .8, .2, 1) both; --from: 14px; }
+.slide-from-left { animation: slide-x 0.3s cubic-bezier(.2, .8, .2, 1) both; --from: -14px; }
+@keyframes slide-x {
+  from { opacity: 0; transform: translateX(var(--from)); }
+}
+/* แถวรายการไล่กันลอยขึ้นมา */
+.row-in {
+  animation: row-in 0.4s cubic-bezier(.2, .8, .2, 1) both;
+}
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+/* ส่วนที่กางออกเมื่อเลือกแถว */
+.expand-in {
+  animation: expand-in 0.3s cubic-bezier(.2, .8, .2, 1) both;
+  transform-origin: top;
+}
+@keyframes expand-in {
+  from { opacity: 0; transform: translateY(-6px); }
+}
+
+/* ปฏิทิน: หล่นลงมาจากปุ่ม + วันที่เลือกเด้งเข้า */
+.cal-pop {
+  transform-origin: top right;
+  animation: cal-pop 0.22s cubic-bezier(.2, .9, .3, 1.2) both;
+}
+@keyframes cal-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+}
+.cal-sel {
+  animation: pop-in 0.3s cubic-bezier(.3, 1.6, .5, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-pill, .seg-pill, .tab-bar { transition: none; }
+  .nav-in, .nav-bounce, .pop-in, .slide-from-right, .slide-from-left, .row-in, .expand-in, .cal-pop, .cal-sel { animation: none; }
+}
+
 /* ---------- หน้าเข้าสู่ระบบ ---------- */
 /* พื้นหลังทั้งหน้า: เทาอ่อนอมเขียว */
 .login-bg {
