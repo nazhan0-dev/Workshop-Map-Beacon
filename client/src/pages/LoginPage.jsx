@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Shield, User, Lock, Eye, EyeOff } from "lucide-react";
+import { User, Lock, Eye, EyeOff } from "lucide-react";
+import { BeaconLogo } from "../components/Logo";
 import useAuthStore from "../store/useAuthStore";
 import { Button } from "../components/ui";
 import { errMsg } from "../lib/api";
@@ -35,8 +36,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-dvh bg-white md:bg-paper flex items-center justify-center">
       <form onSubmit={submit} className="w-full max-w-[400px] md:surface px-6 py-10 md:p-10 flex flex-col">
-        <div className="w-14 h-14 rounded-[18px] bg-brand text-white flex items-center justify-center"><Shield size={28} /></div>
-        <h1 className="text-[28px] font-bold mt-7">เข้าสู่ระบบ</h1>
+        <BeaconLogo size={48} />
+        <h1 className="text-[28px] font-bold mt-8">เข้าสู่ระบบ</h1>
         <p className="text-mute mt-1">ระบบจัดเวรเจ้าหน้าที่รักษาความปลอดภัย</p>
 
         <label className="mt-9 text-sm font-semibold mb-2" htmlFor="u">ชื่อผู้ใช้</label>

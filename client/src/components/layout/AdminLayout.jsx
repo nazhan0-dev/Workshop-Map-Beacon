@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Map, LayoutGrid, Users, MapPin, LogOut, Shield } from "lucide-react";
+import { Map, LayoutGrid, Users, MapPin, LogOut } from "lucide-react";
+import { BeaconAppIcon } from "../Logo";
 import useAuthStore from "../../store/useAuthStore";
 import { initials } from "../../lib/shifts";
 
@@ -19,7 +20,7 @@ export default function AdminLayout() {
     <div className="h-dvh flex md:p-4 md:gap-3">
       {/* แถบเมนูซ้าย (จอใหญ่) */}
       <aside className="hidden md:flex surface w-[72px] shrink-0 flex-col items-center py-4 gap-2.5">
-        <div className="w-11 h-11 rounded-[14px] bg-brand text-white flex items-center justify-center"><Shield size={22} /></div>
+        <span title="Beacon"><BeaconAppIcon size={44} /></span>
         <div className="w-9 h-px bg-line my-1.5" />
         {NAV.map(({ to, label, icon }) => { const Icon = icon; return (
           <NavLink key={to} to={to} title={label} aria-label={label}

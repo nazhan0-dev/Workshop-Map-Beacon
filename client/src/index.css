@@ -3,10 +3,12 @@
 @import "@fontsource/ibm-plex-sans-thai/500.css";
 @import "@fontsource/ibm-plex-sans-thai/600.css";
 @import "@fontsource/ibm-plex-sans-thai/700.css";
+@import "@fontsource/sora/700.css";
 
 /* สีและฟอนต์ของระบบ ใช้เป็นคลาส Tailwind ได้ เช่น bg-paper text-ink text-mute bg-brand */
 @theme {
   --font-sans: "IBM Plex Sans Thai", system-ui, sans-serif;
+  --font-brand: "Sora", "IBM Plex Sans Thai", sans-serif;
   --color-paper: #f4f5f3;
   --color-ink: #17191c;
   --color-mute: #70757b;
@@ -43,6 +45,10 @@
 .leaflet-container {
   font-family: var(--font-sans);
   background: #edefeb;
+}
+/* ทำให้แผนที่ OSM สีอ่อนลง โทนเทาเขียว ให้หมุดเด่น */
+.map-tiles {
+  filter: grayscale(0.85) brightness(1.06) contrast(0.88) sepia(0.08);
 }
 .pin {
   position: absolute;
