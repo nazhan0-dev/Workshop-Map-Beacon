@@ -41,6 +41,17 @@
   box-shadow: 0 1px 2px rgb(23 25 28 / 0.04), 0 8px 24px rgb(23 25 28 / 0.05);
 }
 
+/* ---------- โลโก้ ---------- */
+.logo-spin {
+  animation: logo-spin 2.4s linear infinite;
+}
+@keyframes logo-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-spin { animation: none; }
+}
+
 /* ---------- แถบเมนู ---------- */
 /* ไฮไลต์เมนูที่เลือก เลื่อนไปมาแบบมีเด้ง */
 .nav-pill {
@@ -147,6 +158,110 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .dash-rise, .dash-bar, .seg-fill, .skeleton { animation: none; }
+}
+
+/* ---------- แผนที่ของ รปภ. ---------- */
+/* เส้นทางค่อย ๆ ลากจากจุดเริ่มไปถึงปลายทาง */
+.route-line {
+  stroke-dasharray: 3000;
+  stroke-dashoffset: 3000;
+  animation: route-draw 1.4s cubic-bezier(.4, 0, .2, 1) forwards;
+}
+@keyframes route-draw {
+  to { stroke-dashoffset: 0; }
+}
+/* หลังกดรับทราบ: ปุ่มนำทางเด้งเข้ามา แล้วมีวงแสงชวนกด */
+.nav-cta {
+  animation: pop-in 0.4s cubic-bezier(.3, 1.6, .5, 1) both, nav-cta-glow 1.6s ease-out 0.4s 3;
+}
+@keyframes nav-cta-glow {
+  0% { box-shadow: 0 0 0 0 rgb(255 255 255 / 0.55); }
+  100% { box-shadow: 0 0 0 12px rgb(255 255 255 / 0); }
+}
+/* คำสั่งเลี้ยวใหม่: สไลด์เข้ามาจากด้านขวา */
+.nav-step {
+  animation: nav-step 0.35s cubic-bezier(.2, .9, .3, 1) both;
+}
+@keyframes nav-step {
+  from { opacity: 0; transform: translateX(24px); }
+}
+/* ---------- การ์ดเวรวันนี้ (หน้าเวรของฉัน) ---------- */
+/* พื้นดำเข้ม (สีเดียวกับ ink) */
+.hero-dark {
+  background: var(--color-ink);
+  box-shadow: 0 1px 2px rgb(23 25 28 / 0.06), 0 12px 32px -14px rgb(23 25 28 / 0.4);
+}
+
+/* ---------- เวลาเดิน (หน้าเวรของฉัน) ---------- */
+/* ตัวเลขที่เปลี่ยนเลื่อนลงมาจากด้านบน */
+.tick-in {
+  animation: tick-in 0.35s cubic-bezier(.2, .9, .3, 1.2);
+}
+@keyframes tick-in {
+  from { opacity: 0; transform: translateY(-55%); }
+}
+/* แถบเวลากะ: ขยับนุ่ม ๆ ทุกวินาที + แสงวิ่ง + จุดเรืองที่ปลาย */
+.shift-bar {
+  transform-origin: left;
+  transition: width 1s linear;
+  animation: dash-bar 1s cubic-bezier(.2, .8, .2, 1) 0.2s both;
+  overflow: visible;
+}
+.shift-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent 0%, rgb(255 255 255 / 0.45) 50%, transparent 100%);
+  background-size: 60px 100%;
+  background-repeat: no-repeat;
+  animation: shift-shine 2.4s linear infinite;
+}
+@keyframes shift-shine {
+  from { background-position: -60px 0; }
+  to { background-position: calc(100% + 60px) 0; }
+}
+.shift-head {
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--color-brand);
+  animation: shift-pulse 1.6s ease-out infinite;
+}
+@keyframes shift-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(46 158 104 / 0.45); }
+  100% { box-shadow: 0 0 0 9px rgb(46 158 104 / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tick-in, .shift-bar, .shift-bar::before, .shift-head { animation: none; }
+  .shift-bar { transition: none; }
+}
+
+/* ปุ่ม/แถบลอยบนแผนที่ค่อย ๆ ลงมา */
+.map-float {
+  animation: map-float 0.45s cubic-bezier(.2, .9, .3, 1.1) 0.1s both;
+}
+@keyframes map-float {
+  from { opacity: 0; transform: translateY(-10px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-float { animation: none; }
+}
+/* แผงข้อมูลด้านล่างเลื่อนขึ้นมา */
+.sheet-up {
+  animation: sheet-up 0.45s cubic-bezier(.2, .9, .3, 1) both;
+}
+@keyframes sheet-up {
+  from { transform: translateY(40px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .route-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+  .sheet-up, .nav-cta, .nav-step { animation: none; }
 }
 
 /* ---------- หน้าจุดเวร ---------- */
@@ -400,6 +515,26 @@
   }
 }
 
+/* เครดิตแผนที่: เล็กและจาง ชัดขึ้นตอนชี้ */
+.leaflet-container .leaflet-control-attribution {
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 1px 6px;
+  margin: 0 6px 6px 0;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.55);
+  color: var(--color-mute);
+  opacity: 0.7;
+  transition: opacity 0.2s, background 0.2s;
+}
+.leaflet-container .leaflet-control-attribution:hover {
+  opacity: 1;
+  background: rgb(255 255 255 / 0.9);
+}
+.leaflet-container .leaflet-control-attribution a {
+  color: inherit;
+}
+
 /* ---------- หมุดบนแผนที่ (สร้างเป็น HTML ใน MapView) ---------- */
 .leaflet-container {
   font-family: var(--font-sans);
@@ -617,4 +752,37 @@
   box-shadow: 0 0 0 3px #fff, 0 0 0 14px rgb(47 111 228 / 0.15);
   transform: translate(-50%, -50%);
   position: absolute;
+}
+
+/* ---------- รายงานเหตุการณ์ ---------- */
+/* เครื่องหมาย ! บนหมุดจุดที่มีเรื่องค้าง */
+.pin-alert {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--color-warn);
+  color: #fff;
+  font: 800 11px/17px var(--font-sans, inherit);
+  text-align: center;
+  box-shadow: 0 0 0 2px #fff;
+}
+.pin-alert.u { background: var(--color-danger); animation: inc-ring 1.6s ease-out infinite; }
+.pin-tip-a {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-warn);
+}
+.pin-tip-a.u { color: var(--color-danger); }
+/* เรื่องด่วนที่ยังไม่มีคนรับ: วงสัญญาณกระพริบ */
+.inc-pulse { animation: inc-ring 1.6s ease-out infinite; }
+@keyframes inc-ring {
+  0% { box-shadow: 0 0 0 0 rgb(214 76 67 / 0.55), 0 0 0 2px #fff; }
+  70%, 100% { box-shadow: 0 0 0 8px rgb(214 76 67 / 0), 0 0 0 2px #fff; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inc-pulse, .pin-alert.u { animation: none; }
 }

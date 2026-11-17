@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, Phone, Search, X, Sun, Sunset, Moon, AlertTriangl
 import Header from "../../components/layout/Header";
 import { Button, Modal } from "../../components/ui";
 import AddLocationModal from "../../components/locations/AddLocationModal";
+import MiniMap from "../../components/map/MiniMap";
 import { api, errMsg } from "../../lib/api";
 import { toast } from "../../store/useToast";
 
@@ -13,33 +14,6 @@ const SHIFTS = [
   { key: "need_night", label: "ดึก", icon: Moon },
 ];
 
-// แผนที่ย่อจากภาพ tile ของ OpenStreetMap (3x3 แผ่น วางให้จุดอยู่กลางกรอบ)
-const TILE = 256;
-function MiniMap({ lat, lng, zoom = 16 }) {
-  const n = 2 ** zoom;
-  const x = ((Number(lng) + 180) / 360) * n;
-  const r = (Number(lat) * Math.PI) / 180;
-  const y = ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n;
-  const tx = Math.floor(x), ty = Math.floor(y);
-  const px = (x - tx) * TILE, py = (y - ty) * TILE;
-  const tiles = [];
-  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) tiles.push([i, j]);
-
-  return (
-    <div className="relative h-[120px] overflow-hidden bg-[#edefeb]" aria-hidden="true">
-      <div className="mini-map absolute" style={{ left: `calc(50% - ${px + TILE}px)`, top: `calc(50% - ${py + TILE}px)`, width: TILE * 3, height: TILE * 3, transformOrigin: `${px + TILE}px ${py + TILE}px` }}>
-        {tiles.map(([i, j]) => (
-          <img key={`${i},${j}`} src={`https://tile.openstreetmap.org/${zoom}/${tx + i}/${ty + j}.png`} alt="" loading="lazy" draggable={false}
-            className="absolute w-64 h-64 max-w-none select-none" style={{ left: (i + 1) * TILE, top: (j + 1) * TILE }} />
-        ))}
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-white/50 to-transparent" />
-      <span className="mini-pin absolute left-1/2 top-1/2 w-9 h-9 -ml-[18px] -mt-[18px] rounded-full bg-ink text-white flex items-center justify-center shadow-[0_6px_16px_rgb(23_25_28/0.35)] ring-[3px] ring-white">
-        <MapPinned size={16} />
-      </span>
-    </div>
-  );
-}
 
 function CardSkeleton() {
   return (
@@ -118,7 +92,7 @@ export default function LocationsPage() {
                 <article key={l.id} style={{ animationDelay: `${Math.min(i, 9) * 0.05}s` }}
                   className="loc-card dash-rise group surface overflow-hidden flex flex-col">
                   <div className="relative">
-                    <MiniMap lat={l.lat} lng={l.lng} />
+                    <MiniMap lat={l.lat} lng={l.lng} fade />
                     <div className="absolute top-2.5 right-2.5 flex gap-1.5 sm:opacity-0 sm:-translate-y-1 sm:group-hover:opacity-100 sm:group-hover:translate-y-0 sm:focus-within:opacity-100 sm:focus-within:translate-y-0 transition-all duration-200">
                       <button onClick={() => setEdit(l)} className={iconBtn} aria-label={`แก้ไข ${l.name}`} title="แก้ไข"><Pencil size={15} /></button>
                       <button onClick={() => setDelFor(l)} className={`${iconBtn} text-danger hover:bg-danger-soft`} aria-label={`ลบ ${l.name}`} title="ลบ"><Trash2 size={15} /></button>
