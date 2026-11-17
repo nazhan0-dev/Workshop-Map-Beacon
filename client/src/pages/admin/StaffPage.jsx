@@ -1,12 +1,51 @@
-import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, KeyRound, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Pencil, Trash2, KeyRound, Search, X, Phone, ShieldCheck, UserSearch } from "lucide-react";
 import Header from "../../components/layout/Header";
-import { Avatar, Button, Modal, Field, inputCls, Spinner, Empty } from "../../components/ui";
+import { Button, Modal, Field, inputCls, Segmented } from "../../components/ui";
 import { api, errMsg } from "../../lib/api";
 import { toast } from "../../store/useToast";
 import useAuthStore from "../../store/useAuthStore";
+import { initials } from "../../lib/shifts";
 
 const EMPTY = { name: "", username: "", password: "", role: "USER", position: "", phone: "" };
+
+// สีพื้นหลังรูปโปรไฟล์ เลือกจากชื่อ (คนเดิมได้สีเดิมเสมอ)
+const TONES = [
+  "bg-[#e5f4ec] text-[#1f7a4f]", "bg-[#e8eefc] text-[#2f55b5]", "bg-[#fbf1e3] text-[#a0621a]",
+  "bg-[#f4e9fb] text-[#7a3fa3]", "bg-[#fbeae8] text-[#b23b32]", "bg-[#e6f5f6] text-[#1f7680]",
+];
+const toneOf = (s) => TONES[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % TONES.length];
+
+function StaffAvatar({ user }) {
+  const cls = user.role === "ADMIN" ? "bg-ink text-white" : toneOf(user.name);
+  return (
+    <span className={`relative w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${cls}`} aria-hidden>
+      {initials(user.name)}
+      {user.role === "ADMIN" && (
+        <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center ring-2 ring-white">
+          <ShieldCheck size={11} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ไฮไลต์คำที่ค้นหา
+function Hl({ text, q }) {
+  if (!q || !text) return text || null;
+  const i = text.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return text;
+  return <>{text.slice(0, i)}<mark className="bg-warn-soft text-ink rounded px-0.5">{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}</>;
+}
+
+function RowSkeleton() {
+  return (
+    <div className="flex items-center gap-3 px-3 py-3.5 border-b border-line last:border-0">
+      <span className="w-11 h-11 rounded-full skeleton bg-paper" />
+      <div className="flex-1 space-y-2"><div className="h-3.5 w-40 rounded skeleton bg-paper" /><div className="h-3 w-56 rounded skeleton bg-paper" /></div>
+    </div>
+  );
+}
 
 export default function StaffPage() {
   const me = useAuthStore((s) => s.user);
@@ -17,9 +56,20 @@ export default function StaffPage() {
   const [delFor, setDelFor] = useState(null);
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
+  const [role, setRole] = useState("ALL");
+  const searchRef = useRef(null);
 
   const load = () => api.get("/users").then(setUsers).catch((e) => toast(errMsg(e), "error"));
   useEffect(() => { load(); }, []);
+
+  // กด "/" เพื่อไปที่ช่องค้นหา
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "/" && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) { e.preventDefault(); searchRef.current?.focus(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const run = async (fn) => { setBusy(true); try { await fn(); } catch (e) { toast(errMsg(e), "error"); } finally { setBusy(false); } };
@@ -29,34 +79,89 @@ export default function StaffPage() {
     toast(form.id ? "บันทึกแล้ว" : `เพิ่ม ${form.name} แล้ว`); setForm(null); load();
   }); };
 
-  const list = (users || []).filter((u) => !q || `${u.name} ${u.username} ${u.position || ""}`.includes(q));
+  const all = users || [];
+  const admins = all.filter((u) => u.role === "ADMIN").length;
+  const needle = q.trim().toLowerCase();
+  const byRole = all.filter((u) => role === "ALL" || u.role === role);
+  const list = byRole.filter((u) => !needle || `${u.name} ${u.username} ${u.position || ""} ${u.phone || ""}`.toLowerCase().includes(needle));
+
+  const roleOptions = [
+    { value: "ALL", label: `ทั้งหมด ${all.length}` },
+    { value: "ADMIN", label: `ผู้ดูแล ${admins}` },
+    { value: "USER", label: `รปภ. ${all.length - admins}` },
+  ];
+  const iconBtn = "w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 hover:scale-105 active:scale-95";
 
   return (
     <div className="h-full overflow-y-auto px-0 md:px-2 pb-6">
-      <Header title="พนักงาน" subtitle={users ? `${users.length} บัญชี` : ""}>
-        <Button variant="dark" onClick={() => setForm({ ...EMPTY })}><Plus size={16} />เพิ่มพนักงาน</Button>
+      <Header title="พนักงาน" subtitle={users ? `${all.length} บัญชี · ผู้ดูแล ${admins} · รปภ. ${all.length - admins}` : "กำลังโหลด…"}>
+        <Button variant="dark" className="group" onClick={() => setForm({ ...EMPTY })}>
+          <Plus size={16} className="transition-transform duration-200 group-hover:rotate-90" />เพิ่มพนักงาน
+        </Button>
       </Header>
 
-      <div className="surface mx-3 md:mx-0 p-3 md:p-4">
-        <label className="flex items-center gap-2 bg-paper rounded-xl px-3.5 h-11 mb-2">
-          <Search size={16} className="text-faint" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาชื่อ ชื่อผู้ใช้ หรือตำแหน่ง" className="flex-1 bg-transparent outline-none text-[15px]" />
-        </label>
-        {!users ? <div className="py-10 flex justify-center"><Spinner /></div> : list.length === 0 ? (
-          <Empty title="ไม่พบพนักงาน" text={q ? "ลองค้นหาด้วยคำอื่น" : "เพิ่มพนักงานคนแรกได้เลย"} />
+      <div className="dash-rise surface mx-3 md:mx-0 p-3 md:p-4">
+        {/* ค้นหา + กรองสิทธิ์ */}
+        <div className="flex flex-col sm:flex-row gap-2.5 mb-2">
+          <label className="group flex-1 flex items-center gap-2 bg-paper rounded-xl px-3.5 h-11 border border-transparent transition
+            focus-within:bg-white focus-within:border-ink focus-within:shadow-[0_0_0_4px_rgb(23_25_28/0.06)]">
+            <Search size={16} className="text-faint transition-colors group-focus-within:text-ink" />
+            <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาชื่อ ชื่อผู้ใช้ ตำแหน่ง หรือเบอร์โทร"
+              className="flex-1 min-w-0 bg-transparent outline-none text-[15px]" />
+            {q ? (
+              <button type="button" onClick={() => { setQ(""); searchRef.current?.focus(); }} aria-label="ล้างคำค้นหา"
+                className="pop-in w-6 h-6 rounded-full bg-track text-mute hover:text-ink flex items-center justify-center"><X size={13} /></button>
+            ) : <kbd className="hidden sm:block text-[11px] font-semibold text-faint border border-line rounded px-1.5 py-0.5">/</kbd>}
+          </label>
+          <Segmented options={roleOptions} value={role} onChange={setRole} className="sm:w-[300px] shrink-0" />
+        </div>
+
+        {q && users && (
+          <p className="pop-in text-xs text-mute px-1 pb-1">พบ {list.length} จาก {byRole.length} คน</p>
+        )}
+
+        {!users ? (
+          <div>{[0, 1, 2, 3, 4].map((i) => <RowSkeleton key={i} />)}</div>
+        ) : list.length === 0 ? (
+          <div className="pop-in flex flex-col items-center text-center py-12">
+            <span className="w-14 h-14 rounded-2xl bg-paper text-mute flex items-center justify-center mb-3"><UserSearch size={24} /></span>
+            <p className="font-semibold">ไม่พบพนักงาน</p>
+            <p className="text-sm text-mute mt-1">{q ? `ไม่มีใครตรงกับ "${q}"` : "เพิ่มพนักงานคนแรกได้เลย"}</p>
+            {q && <button onClick={() => setQ("")} className="mt-3 text-sm font-semibold text-brand hover:underline">ล้างคำค้นหา</button>}
+          </div>
         ) : (
-          <ul>
-            {list.map((u) => (
-              <li key={u.id} className="flex items-center gap-3 px-2 py-3 border-b border-line last:border-0">
-                <Avatar name={u.name} size={40} dark={u.role === "ADMIN"} />
+          <ul key={`${role}-${needle ? "q" : ""}`}>
+            {list.map((u, i) => (
+              <li key={u.id} style={{ animationDelay: `${Math.min(i, 12) * 0.035}s` }}
+                className="row-in group flex items-center gap-3 px-3 py-3 border-b border-line last:border-0 hover:bg-paper/70 transition-colors">
+                <StaffAvatar user={u} />
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold truncate">{u.name} {u.role === "ADMIN" && <span className="text-[11px] font-semibold bg-ink text-white rounded px-1.5 py-0.5 ml-1 align-middle">ผู้ดูแล</span>}</div>
-                  <div className="text-xs text-mute truncate">@{u.username}{u.position ? ` · ${u.position}` : ""}{u.phone ? ` · ${u.phone}` : ""}</div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold truncate"><Hl text={u.name} q={needle} /></span>
+                    {u.id === me.id && <span className="text-[10px] font-bold text-brand bg-brand-soft rounded px-1.5 py-0.5 shrink-0">คุณ</span>}
+                  </div>
+                  <div className="flex items-center gap-x-2 gap-y-1 flex-wrap mt-0.5 text-xs text-mute">
+                    <span>@<Hl text={u.username} q={needle} /></span>
+                    {(u.position || u.role === "ADMIN") && (
+                      <span className={`font-semibold rounded-md px-1.5 py-0.5 ${u.role === "ADMIN" ? "bg-ink text-white" : "bg-paper text-ink group-hover:bg-white"}`}>
+                        <Hl text={u.position || "ผู้ดูแลระบบ"} q={needle} />
+                      </span>
+                    )}
+                    {u.phone && (
+                      <a href={`tel:${u.phone}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 hover:text-ink">
+                        <Phone size={11} /><Hl text={u.phone} q={needle} />
+                      </a>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <button onClick={() => setForm({ ...EMPTY, ...u, position: u.position || "", phone: u.phone || "" })} className="p-2 rounded-lg hover:bg-paper" aria-label={`แก้ไข ${u.name}`} title="แก้ไข"><Pencil size={17} /></button>
-                  <button onClick={() => { setPw(""); setResetFor(u); }} className="p-2 rounded-lg hover:bg-paper" aria-label={`รีเซ็ตรหัสผ่าน ${u.name}`} title="รีเซ็ตรหัสผ่าน"><KeyRound size={17} /></button>
-                  {u.id !== me.id && <button onClick={() => setDelFor(u)} className="p-2 rounded-lg hover:bg-danger-soft text-danger" aria-label={`ลบ ${u.name}`} title="ลบ"><Trash2 size={17} /></button>}
+                <div className="flex gap-0.5 sm:opacity-50 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
+                  <button onClick={() => setForm({ ...EMPTY, ...u, position: u.position || "", phone: u.phone || "" })}
+                    className={`${iconBtn} hover:bg-white hover:shadow-sm`} aria-label={`แก้ไข ${u.name}`} title="แก้ไข"><Pencil size={16} /></button>
+                  <button onClick={() => { setPw(""); setResetFor(u); }}
+                    className={`${iconBtn} hover:bg-white hover:shadow-sm`} aria-label={`รีเซ็ตรหัสผ่าน ${u.name}`} title="รีเซ็ตรหัสผ่าน"><KeyRound size={16} /></button>
+                  {u.id !== me.id
+                    ? <button onClick={() => setDelFor(u)} className={`${iconBtn} text-danger hover:bg-danger-soft`} aria-label={`ลบ ${u.name}`} title="ลบ"><Trash2 size={16} /></button>
+                    : <span className="w-9" />}
                 </div>
               </li>
             ))}
