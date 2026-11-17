@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Copy, Plus, X, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Copy, Plus, X, AlertTriangle, CalendarDays, CalendarRange, Info } from "lucide-react";
 import useDutyStore from "../../store/useDutyStore";
 import { toast } from "../../store/useToast";
 import { errMsg } from "../../lib/api";
@@ -11,6 +11,9 @@ import LocationsList from "../../components/locations/LocationsList";
 import PersonnelList, { FreeTray } from "../../components/people/PersonnelList";
 import AddLocationModal from "../../components/locations/AddLocationModal";
 import DatePicker from "../../components/DatePicker";
+
+// พื้นที่ที่ปุ่มด้านบนและแถบพนักงานว่างด้านล่างบังแผนที่ (px)
+const MAP_INSETS = { top: 56, bottom: 90 };
 
 export default function AssignPage() {
   const s = useDutyStore();
@@ -24,6 +27,17 @@ export default function AssignPage() {
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyMode, setCopyMode] = useState(null);
   const [busy, setBusy] = useState(false);
+  const copyBox = useRef(null);
+
+  // เมนูคัดลอก: ปิดเมื่อคลิกข้างนอก / Esc ยังยกเลิกโหมดวางจุดด้วย
+  useEffect(() => {
+    if (!copyOpen && !picking) return;
+    const onDown = (e) => { if (copyOpen && !copyBox.current?.contains(e.target)) setCopyOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") { setCopyOpen(false); setPicking(false); } };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [copyOpen, picking]);
   const [dateDir, setDateDir] = useState(1); // ทิศที่วันที่เลื่อนเข้ามา (1 = ไปข้างหน้า)
   const goDate = (d) => { setDateDir(d >= date ? 1 : -1); s.setDate(d); };
 
@@ -40,20 +54,25 @@ export default function AssignPage() {
   const byUser = useMemo(() => Object.fromEntries(assignments.map((a) => [a.user_id, a])), [assignments]);
   const free = staff.filter((u) => !byUser[u.id]);
 
-  const counts = useMemo(() => {
-    const c = {};
-    assignments.forEach((a) => { c[a.location_id] = (c[a.location_id] || 0) + 1; });
-    return c;
+  // ชื่อคนที่จัดแล้วในแต่ละจุด
+  const peopleByLoc = useMemo(() => {
+    const p = {};
+    assignments.forEach((a) => { (p[a.location_id] ||= []).push(a.user_name); });
+    return p;
   }, [assignments]);
+  const countOf = (id) => peopleByLoc[id]?.length || 0;
 
   const summary = { ok: 0, low: 0, empty: 0 };
-  locations.forEach((l) => { const st = statusOf(counts[l.id] || 0, needOf(l, shift)); if (st in summary) summary[st]++; });
+  locations.forEach((l) => { const st = statusOf(countOf(l.id), needOf(l, shift)); if (st in summary) summary[st]++; });
 
-  const markers = locations.map((l) => ({
-    id: l.id, lat: l.lat, lng: l.lng, name: l.name,
-    status: statusOf(counts[l.id] || 0, needOf(l, shift)),
-    label: `${counts[l.id] || 0}/${needOf(l, shift)}`,
-  }));
+  const markers = locations.map((l) => {
+    const count = countOf(l.id), need = needOf(l, shift);
+    return {
+      id: l.id, lat: l.lat, lng: l.lng, name: l.name,
+      status: statusOf(count, need), label: `${count}/${need}`,
+      count, need, people: peopleByLoc[l.id] || [],
+    };
+  });
 
   // จัดคน/ย้ายคน จากการลากหรือเลือกในรายการ
   async function handleDrop(item, loc, force = false) {
@@ -119,32 +138,56 @@ export default function AssignPage() {
       <section className="relative overflow-hidden md:rounded-3xl md:surface md:col-start-2 md:row-start-1 md:row-span-2">
         <MapView markers={markers} selectedId={selectedId} onSelect={(id) => { s.select(id); setTab("locations"); }}
           picking={picking} onPick={(lat, lng) => { setPicking(false); setNewLoc({ lat: lat.toFixed(6), lng: lng.toFixed(6) }); }}
-          fitKey={locations.length ? "loaded" : "init"}>
+          fitKey={locations.length ? "loaded" : "init"} insets={MAP_INSETS}>
           <ZoomControls />
           <MapOverlay className="absolute right-3 top-3 md:right-4 md:top-4 z-[500] flex gap-2">
-            <div className="relative">
-              <Button className="shadow-sm" onClick={() => setCopyOpen((v) => !v)}><Copy size={16} /><span className="hidden sm:inline">คัดลอกเวร</span></Button>
+            <div className="relative" ref={copyBox}>
+              <Button aria-haspopup="menu" aria-expanded={copyOpen} onClick={() => { setPicking(false); setCopyOpen((v) => !v); }}
+                className={`group shadow-sm ${copyOpen ? "!border-ink !bg-white" : ""}`}>
+                <Copy size={16} className="transition-transform group-hover:-rotate-6" />
+                <span className="hidden sm:inline">คัดลอกเวร</span>
+                <ChevronDown size={14} className={`hidden sm:block -ml-0.5 text-mute transition-transform duration-200 ${copyOpen ? "rotate-180" : ""}`} />
+              </Button>
               {copyOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-line p-1.5">
-                  <button onClick={() => { setCopyOpen(false); setCopyMode("day"); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-paper">
-                    <div className="text-sm font-semibold">จากเมื่อวาน</div><div className="text-xs text-mute">ทุกกะของ {fmtShort(addDays(date, -1))}</div>
-                  </button>
-                  <button onClick={() => { setCopyOpen(false); setCopyMode("week"); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-paper">
-                    <div className="text-sm font-semibold">ทั้งสัปดาห์จากสัปดาห์ก่อน</div><div className="text-xs text-mute">7 วัน เริ่ม {fmtShort(ws)}</div>
-                  </button>
+                <div role="menu" className="cal-pop absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-[0_16px_40px_-12px_rgb(23_25_28/0.3)] border border-line p-1.5">
+                  {[
+                    { mode: "day", icon: CalendarDays, title: "จากเมื่อวาน", sub: `ทุกกะของ ${fmtShort(addDays(date, -1))} → ${fmtShort(date)}` },
+                    { mode: "week", icon: CalendarRange, title: "ทั้งสัปดาห์จากสัปดาห์ก่อน", sub: `7 วัน → ${fmtShort(ws)} – ${fmtShort(addDays(ws, 6))}` },
+                  ].map((o, i) => (
+                    <button key={o.mode} role="menuitem" onClick={() => { setCopyOpen(false); setCopyMode(o.mode); }}
+                      className="row-in group w-full flex items-center gap-3 text-left px-2.5 py-2.5 rounded-xl hover:bg-paper transition-colors"
+                      style={{ animationDelay: `${0.04 + i * 0.05}s` }}>
+                      <span className="w-9 h-9 rounded-xl bg-paper group-hover:bg-white flex items-center justify-center shrink-0 transition-colors">
+                        <o.icon size={17} />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm font-semibold">{o.title}</span>
+                        <span className="block text-xs text-mute mt-0.5">{o.sub}</span>
+                      </span>
+                      <ChevronRight size={15} className="text-faint transition-transform group-hover:translate-x-0.5" />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
-            <Button variant="dark" onClick={() => setPicking((v) => !v)}>
-              {picking ? <><X size={16} />ยกเลิก</> : <><Plus size={16} /><span className="hidden sm:inline">เพิ่มจุด</span></>}
+            <Button variant="dark" onClick={() => { setCopyOpen(false); setPicking((v) => !v); }}
+              className={`group ${picking ? "!bg-white !text-ink !border-line" : ""}`}>
+              {picking
+                ? <><X size={16} />ยกเลิก</>
+                : <><Plus size={16} className="transition-transform duration-200 group-hover:rotate-90" /><span className="hidden sm:inline">เพิ่มจุด</span></>}
             </Button>
           </MapOverlay>
           {picking && (
-            <MapOverlay className="absolute left-1/2 -translate-x-1/2 top-16 md:top-4 z-[500] bg-ink text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg">
+            <MapOverlay className="cal-pop absolute left-1/2 -translate-x-1/2 top-16 md:left-4 md:translate-x-0 md:top-4 z-[500] bg-ink text-white text-sm font-semibold pl-3 pr-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2.5">
+              <span className="relative flex w-2.5 h-2.5">
+                <span className="absolute inset-0 rounded-full bg-[#3ec482] animate-ping opacity-75" />
+                <span className="relative w-2.5 h-2.5 rounded-full bg-[#3ec482]" />
+              </span>
               คลิกบนแผนที่เพื่อวางจุดเวรใหม่
+              <kbd className="ml-1 text-[11px] font-semibold text-white/60 border border-white/20 rounded px-1.5 py-0.5">Esc ยกเลิก</kbd>
             </MapOverlay>
           )}
-          <MapOverlay className="hidden md:flex absolute left-1/2 -translate-x-1/2 bottom-4 z-[500] bg-white rounded-2xl shadow-xl py-2.5 pl-4 pr-3 max-w-[80%]">
+          <MapOverlay className="hidden md:block absolute left-1/2 -translate-x-1/2 bottom-4 z-[500] w-max max-w-[calc(100%-140px)]">
             <FreeTray free={free} />
           </MapOverlay>
         </MapView>
@@ -218,7 +261,10 @@ export default function AssignPage() {
             ? <>คัดลอกเวรทุกกะของ <b>{fmtLong(addDays(date, -1))}</b> มาใส่ <b>{fmtLong(date)}</b></>
             : <>คัดลอกเวร 7 วันของสัปดาห์ <b>{fmtShort(addDays(ws, -7))} – {fmtShort(addDays(ws, -1))}</b> มาใส่สัปดาห์ <b>{fmtShort(ws)} – {fmtShort(addDays(ws, 6))}</b></>}
         </p>
-        <p className="text-sm text-mute mt-2">คนที่มีเวรกะนั้นอยู่แล้ว หรือจุดที่คนครบแล้ว จะถูกข้าม</p>
+        <div className="flex gap-2.5 mt-3 text-[13px] text-mute bg-paper rounded-xl px-3 py-2.5">
+          <Info size={16} className="shrink-0 mt-0.5" />
+          <span>เวรที่มีอยู่แล้วจะไม่ถูกลบ ระบบจะเพิ่มเฉพาะเวรที่ยังว่าง โดยข้ามคนที่มีเวรกะนั้นอยู่แล้ว และจุดที่คนครบแล้ว</span>
+        </div>
       </Modal>
 
       {newLoc && (
