@@ -101,6 +101,41 @@
   from { opacity: 0; transform: translateY(-6px); }
 }
 
+/* ---------- หน้าภาพรวม ---------- */
+.dash-rise {
+  animation: dash-rise 0.5s cubic-bezier(.2, .8, .2, 1) both;
+}
+@keyframes dash-rise {
+  from { opacity: 0; transform: translateY(14px); }
+}
+/* แถบความคืบหน้าวิ่งจาก 0 */
+.dash-bar {
+  transform-origin: left;
+  animation: dash-bar 0.9s cubic-bezier(.2, .8, .2, 1) both;
+  transition: width 0.5s ease;
+}
+@keyframes dash-bar {
+  from { transform: scaleX(0); }
+}
+/* ช่องในแถบแต่ละกะ เติมจากซ้ายทีละช่อง */
+.seg-fill {
+  transform-origin: left;
+  animation: dash-bar 0.4s cubic-bezier(.2, .8, .2, 1) both;
+}
+/* โครงตอนกำลังโหลด */
+.skeleton {
+  background: linear-gradient(90deg, #fff 0%, var(--color-paper) 50%, #fff 100%);
+  background-size: 200% 100%;
+  animation: skeleton 1.2s ease-in-out infinite;
+}
+@keyframes skeleton {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-rise, .dash-bar, .seg-fill, .skeleton { animation: none; }
+}
+
 /* ปฏิทิน: หล่นลงมาจากปุ่ม + วันที่เลือกเด้งเข้า */
 .cal-pop {
   transform-origin: top right;
