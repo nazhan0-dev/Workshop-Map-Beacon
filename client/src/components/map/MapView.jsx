@@ -73,6 +73,7 @@ function FitBounds({ points, fitKey, insets }) {
     const top = Math.min(insets.top, size.y / 4), bottom = Math.min(insets.bottom, size.y / 4);
     map.fitBounds(points.length === 1 ? [points[0], points[0]] : points, {
       paddingTopLeft: [pad, pad + top], paddingBottomRight: [pad, pad + bottom], maxZoom: 17,
+      animate: false, // ครั้งแรกไม่ต้องเล่นอนิเมชัน (ถ้าออกจากหน้าระหว่างซูม Leaflet จะ error)
     });
   }, [points, fitKey, map, size, insets]);
   return null;
@@ -99,8 +100,7 @@ function FlyToSelected({ lat, lng }) {
   const map = useMap();
   useEffect(() => {
     if (lat != null && lng != null) map.flyTo([lat, lng], Math.max(map.getZoom(), 16), { duration: 0.6 });
-  }, [lat, lng, map]);
-  return null;
+  }, [lat, lng, map]);  return null;
 }
 
 function ClickToPick({ picking, onPick }) {
