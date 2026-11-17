@@ -3,6 +3,7 @@ import { Users, Check } from "lucide-react";
 import { Avatar } from "../ui";
 import { drag } from "../../lib/drag";
 import { initials } from "../../lib/shifts";
+import RankBadge from "../RankBadge";
 
 /**
  * รายชื่อพนักงานในกะที่เลือก ลากไปวางที่จุดได้
@@ -23,7 +24,7 @@ export default function PersonnelList({ staff, byUser, onPick }) {
             <Avatar name={u.name} size={36} />
             <span className="flex-1 min-w-0">
               <span className="block font-semibold truncate">{u.name}</span>
-              <span className="block text-xs text-mute">{u.position || "เจ้าหน้าที่"}</span>
+              <span className="flex items-center gap-1.5 text-xs text-mute min-w-0"><RankBadge rank={u.rank} quiet /><span className="truncate">{u.position || (u.rank === "STAFF" || !u.rank ? "เจ้าหน้าที่" : "")}</span></span>
             </span>
             {a
               ? <span className="text-xs text-mute truncate max-w-[110px]">{a.location_name}</span>

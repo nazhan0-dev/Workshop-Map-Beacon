@@ -21,7 +21,7 @@ router.get("/", async (req, res) => {
       [date]
     ),
     query(
-      `SELECT id, name, position FROM users
+      `SELECT id, name, position, \`rank\` FROM users
        WHERE role = 'USER' AND id NOT IN (SELECT user_id FROM assignments WHERE date = ?) ORDER BY name`,
       [date]
     ),

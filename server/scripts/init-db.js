@@ -35,16 +35,16 @@ const adminHash = await bcrypt.hash("admin1234", 10);
 const userHash = await bcrypt.hash("123456", 10);
 
 await conn.query(
-  "INSERT INTO users (name, username, password_hash, role, position, phone) VALUES ?",
+  "INSERT INTO users (name, username, password_hash, role, `rank`, position, phone) VALUES ?",
   [[
-    ["ผู้ดูแลระบบ", "admin", adminHash, "ADMIN", "ผู้ดูแลระบบ", "080-000-0000"],
-    ["สมชาย ใจดี", "somchai", userHash, "USER", "หัวหน้าเวร", "081-111-1111"],
-    ["สมหญิง รักงาน", "somying", userHash, "USER", "รองหัวหน้า", "081-222-2222"],
-    ["วิชัย มานะ", "wichai", userHash, "USER", "เจ้าหน้าที่", "081-333-3333"],
-    ["สุดา สวยงาม", "suda", userHash, "USER", "เจ้าหน้าที่", "081-444-4444"],
-    ["ประยุทธ ขยัน", "prayut", userHash, "USER", "เจ้าหน้าที่", "081-555-5555"],
-    ["มาลี ยิ้มแย้ม", "malee", userHash, "USER", "เจ้าหน้าที่", "081-666-6666"],
-    ["ธนา ใจกล้า", "thana", userHash, "USER", "เจ้าหน้าที่", "081-777-7777"],
+    ["ผู้ดูแลระบบ", "admin", adminHash, "ADMIN", "STAFF", "ผู้ดูแลระบบ", "080-000-0000"],
+    ["สมชาย ใจดี", "somchai", userHash, "USER", "HEAD", null, "081-111-1111"],
+    ["สมหญิง รักงาน", "somying", userHash, "USER", "DEPUTY", null, "081-222-2222"],
+    ["วิชัย มานะ", "wichai", userHash, "USER", "STAFF", null, "081-333-3333"],
+    ["สุดา สวยงาม", "suda", userHash, "USER", "STAFF", null, "081-444-4444"],
+    ["ประยุทธ ขยัน", "prayut", userHash, "USER", "DEPUTY", null, "081-555-5555"],
+    ["มาลี ยิ้มแย้ม", "malee", userHash, "USER", "STAFF", null, "081-666-6666"],
+    ["ธนา ใจกล้า", "thana", userHash, "USER", "HEAD", null, "081-777-7777"],
   ]]
 );
 

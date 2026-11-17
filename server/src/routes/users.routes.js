@@ -5,22 +5,24 @@ import { query } from "../config/db.js";
 import { HttpError } from "../middlewares/error.js";
 
 const router = Router();
-const COLS = "id, name, username, role, position, phone, created_at";
+const COLS = "id, name, username, role, `rank`, position, phone, created_at";
+const RANKS = ["HEAD", "DEPUTY", "STAFF"];
 
 function pickBody(body = {}) {
   const name = (body.name || "").trim();
   const username = (body.username || "").trim();
   const role = body.role === "ADMIN" ? "ADMIN" : "USER";
+  const rank = RANKS.includes(body.rank) ? body.rank : "STAFF";
   if (!name) throw new HttpError(400, "กรอกชื่อพนักงาน");
   if (!/^[a-zA-Z0-9_.]{3,50}$/.test(username)) {
     throw new HttpError(400, "ชื่อผู้ใช้ต้องเป็นภาษาอังกฤษหรือตัวเลข 3–50 ตัว");
   }
-  return { name, username, role, position: body.position?.trim() || null, phone: body.phone?.trim() || null };
+  return { name, username, role, rank, position: body.position?.trim() || null, phone: body.phone?.trim() || null };
 }
 
 // GET /api/users
 router.get("/", async (req, res) => {
-  res.json(await query(`SELECT ${COLS} FROM users ORDER BY role, name`));
+  res.json(await query(`SELECT ${COLS} FROM users ORDER BY role, FIELD(\`rank\`, 'HEAD', 'DEPUTY', 'STAFF'), name`));
 });
 
 // POST /api/users  { name, username, password, role, position, phone }
@@ -29,8 +31,8 @@ router.post("/", async (req, res) => {
   const password = req.body.password || "";
   if (password.length < 6) throw new HttpError(400, "รหัสผ่านต้องมีอย่างน้อย 6 ตัว");
   const r = await query(
-    "INSERT INTO users (name, username, password_hash, role, position, phone) VALUES (?, ?, ?, ?, ?, ?)",
-    [data.name, data.username, await bcrypt.hash(password, 10), data.role, data.position, data.phone]
+    "INSERT INTO users (name, username, password_hash, role, `rank`, position, phone) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [data.name, data.username, await bcrypt.hash(password, 10), data.role, data.rank, data.position, data.phone]
   );
   const [user] = await query(`SELECT ${COLS} FROM users WHERE id = ?`, [r.insertId]);
   res.status(201).json(user);
@@ -43,8 +45,8 @@ router.put("/:id", async (req, res) => {
     throw new HttpError(400, "เปลี่ยนสิทธิ์ของตัวเองไม่ได้");
   }
   const r = await query(
-    "UPDATE users SET name = ?, username = ?, role = ?, position = ?, phone = ? WHERE id = ?",
-    [data.name, data.username, data.role, data.position, data.phone, req.params.id]
+    "UPDATE users SET name = ?, username = ?, role = ?, `rank` = ?, position = ?, phone = ? WHERE id = ?",
+    [data.name, data.username, data.role, data.rank, data.position, data.phone, req.params.id]
   );
   if (!r.affectedRows) throw new HttpError(404, "ไม่พบพนักงาน");
   const [user] = await query(`SELECT ${COLS} FROM users WHERE id = ?`, [req.params.id]);

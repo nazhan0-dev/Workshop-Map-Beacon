@@ -11,6 +11,7 @@ import LocationsList from "../../components/locations/LocationsList";
 import PersonnelList, { FreeTray } from "../../components/people/PersonnelList";
 import AddLocationModal from "../../components/locations/AddLocationModal";
 import DatePicker from "../../components/DatePicker";
+import RankBadge from "../../components/RankBadge";
 
 // พื้นที่ที่ปุ่มด้านบนและแถบพนักงานว่างด้านล่างบังแผนที่ (px)
 const MAP_INSETS = { top: 56, bottom: 90 };
@@ -226,7 +227,7 @@ export default function AssignPage() {
                 <button onClick={() => { const loc = addFor; setAddFor(null); handleDrop(a ? { kind: "asg", id: a.id, name: u.name, locationId: a.location_id } : { kind: "user", userId: u.id, name: u.name }, loc); }}
                   className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-paper text-left">
                   <Avatar name={u.name} size={36} />
-                  <span className="flex-1"><span className="block font-semibold">{u.name}</span><span className="block text-xs text-mute">{u.position}</span></span>
+                  <span className="flex-1"><span className="flex items-center gap-1.5 font-semibold">{u.name}<RankBadge rank={u.rank} quiet /></span><span className="block text-xs text-mute">{u.position}</span></span>
                   {a ? <span className="text-xs text-mute">ย้ายมาจาก {a.location_name}</span>
                      : <span className="text-xs font-semibold text-brand bg-brand-soft px-2 py-1 rounded-md">ว่าง</span>}
                 </button>

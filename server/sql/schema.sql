@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   username      VARCHAR(50)  NOT NULL UNIQUE,
   password_hash VARCHAR(100) NOT NULL,
   role          ENUM('ADMIN','USER') NOT NULL DEFAULT 'USER',
+  `rank`        ENUM('HEAD','DEPUTY','STAFF') NOT NULL DEFAULT 'STAFF', -- ตำแหน่ง: หัวหน้า / รองหัวหน้า / เจ้าหน้าที่
   position      VARCHAR(100) NULL,
   phone         VARCHAR(20)  NULL,
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP

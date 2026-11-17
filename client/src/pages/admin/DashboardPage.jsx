@@ -5,6 +5,7 @@ import {
   Sun, Sunset, Moon, AlertTriangle, UserX, PartyPopper,
 } from "lucide-react";
 import Header from "../../components/layout/Header";
+import RankBadge from "../../components/RankBadge";
 import DatePicker from "../../components/DatePicker";
 import { Avatar, StatusDot } from "../../components/ui";
 import { api, errMsg } from "../../lib/api";
@@ -260,7 +261,7 @@ export default function DashboardPage() {
                     className="row-in flex items-center gap-3 py-2.5 border-t border-line first:border-t-0">
                     <Avatar name={u.name} size={34} />
                     <div className="flex-1 min-w-0 font-semibold truncate">{u.name}</div>
-                    <span className="text-xs text-mute bg-paper rounded-md px-2 py-1">{u.position}</span>
+                    <RankBadge rank={u.rank} size="md" />
                   </div>
                 ))}
               </Card>

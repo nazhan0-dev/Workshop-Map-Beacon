@@ -8,7 +8,7 @@ const router = Router();
 
 const LIST_SQL = `
   SELECT a.id, a.user_id, a.location_id, a.date, a.shift, a.acknowledged_at,
-         u.name AS user_name, u.position AS user_position, l.name AS location_name
+         u.name AS user_name, u.position AS user_position, u.\`rank\` AS user_rank, l.name AS location_name
   FROM assignments a
   JOIN users u ON u.id = a.user_id
   JOIN locations l ON l.id = a.location_id`;
@@ -37,7 +37,7 @@ router.get("/", async (req, res) => {
   if (!isDateStr(date)) throw new HttpError(400, "ระบุวันที่ (YYYY-MM-DD)");
   if (shift && !isShift(shift)) throw new HttpError(400, "กะไม่ถูกต้อง");
   const rows = shift
-    ? await query(`${LIST_SQL} WHERE a.date = ? AND a.shift = ? ORDER BY a.id`, [date, shift])
+    ? await query(`${LIST_SQL} WHERE a.date = ? AND a.shift = ? ORDER BY FIELD(u.\`rank\`,'HEAD','DEPUTY','STAFF'), a.id`, [date, shift])
     : await query(`${LIST_SQL} WHERE a.date = ? ORDER BY a.shift, a.id`, [date]);
   res.json(rows);
 });

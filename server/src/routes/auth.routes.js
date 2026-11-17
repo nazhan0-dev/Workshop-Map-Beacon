@@ -5,7 +5,7 @@ import { auth, signToken } from "../middlewares/auth.js";
 import { HttpError } from "../middlewares/error.js";
 
 const router = Router();
-const PUBLIC_COLS = "id, name, username, role, position, phone";
+const PUBLIC_COLS = "id, name, username, role, `rank`, position, phone";
 
 // POST /api/auth/login  { username, password }
 router.post("/login", async (req, res) => {

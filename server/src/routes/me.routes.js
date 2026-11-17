@@ -5,6 +5,7 @@ import { HttpError } from "../middlewares/error.js";
 import { isDateStr, toDateStr, addDays } from "../utils/shifts.js";
 
 const router = Router();
+const RANK_ORDER = { HEAD: 0, DEPUTY: 1, STAFF: 2 };
 
 // GET /api/me/assignments?from=YYYY-MM-DD&days=14
 // เวรของฉันตั้งแต่วันที่ from พร้อมรายละเอียดจุดและเพื่อนร่วมกะ
@@ -24,7 +25,7 @@ router.get("/assignments", async (req, res) => {
 
   if (rows.length) {
     const mates = await query(
-      `SELECT a.location_id, a.date, a.shift, u.id, u.name, u.phone, u.position
+      `SELECT a.location_id, a.date, a.shift, u.id, u.name, u.phone, u.position, u.\`rank\`
        FROM assignments a JOIN users u ON u.id = a.user_id
        WHERE a.user_id <> ? AND (a.location_id, a.date, a.shift) IN (${rows.map(() => "(?, ?, ?)").join(",")})`,
       [req.user.id, ...rows.flatMap((r) => [r.location_id, r.date, r.shift])]
@@ -32,7 +33,8 @@ router.get("/assignments", async (req, res) => {
     rows.forEach((r) => {
       r.teammates = mates
         .filter((m) => m.location_id === r.location_id && m.date === r.date && m.shift === r.shift)
-        .map(({ id, name, phone, position }) => ({ id, name, phone, position }));
+        .sort((x, y) => RANK_ORDER[x.rank] - RANK_ORDER[y.rank])
+        .map(({ id, name, phone, position, rank }) => ({ id, name, phone, position, rank }));
     });
   }
   res.json(rows);

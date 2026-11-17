@@ -8,6 +8,7 @@ import { Avatar, Button, Spinner } from "../../components/ui";
 import { errMsg } from "../../lib/api";
 import { SHIFT_INFO, fmtShort, parseDate, shiftTiming, currentShift } from "../../lib/shifts";
 import { mapsUrl } from "../../lib/maps";
+import RankBadge from "../../components/RankBadge";
 
 
 function greeting() {
@@ -35,7 +36,7 @@ export default function MyShiftsPage() {
     <div className="px-4 pt-6 pb-4 flex flex-col gap-3">
       <div className="flex items-center gap-3 px-1 pb-1">
         <Avatar name={user.name} size={42} />
-        <div className="flex-1"><div className="text-sm text-mute">{greeting()}</div><div className="text-lg font-semibold">{user.name}</div></div>
+        <div className="flex-1"><div className="text-sm text-mute">{greeting()}</div><div className="flex items-center gap-2 min-w-0"><span className="text-lg font-semibold truncate">{user.name}</span><RankBadge rank={user.rank} /></div></div>
       </div>
 
       {error && <p className="text-sm text-danger px-1">{error}</p>}
@@ -76,7 +77,7 @@ export default function MyShiftsPage() {
                 {hero.teammates.map((t) => (
                   <div key={t.id} className="flex items-center gap-3 py-1.5">
                     <Avatar name={t.name} size={38} />
-                    <div className="flex-1"><div className="font-semibold">{t.name}</div><div className="text-xs text-mute">{t.position}</div></div>
+                    <div className="flex-1 min-w-0"><div className="flex items-center gap-1.5"><span className="font-semibold truncate">{t.name}</span><RankBadge rank={t.rank} quiet /></div>{t.position && <div className="text-xs text-mute">{t.position}</div>}</div>
                     {t.phone && <a href={`tel:${t.phone}`} aria-label={`โทรหา ${t.name}`} className="w-[38px] h-[38px] rounded-xl border border-line flex items-center justify-center text-brand hover:bg-paper"><Phone size={16} /></a>}
                   </div>
                 ))}

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   username      VARCHAR(50)  NOT NULL UNIQUE,
   password_hash VARCHAR(100) NOT NULL,
   role          ENUM('ADMIN','USER') NOT NULL DEFAULT 'USER',
+  `rank`        ENUM('HEAD','DEPUTY','STAFF') NOT NULL DEFAULT 'STAFF',
   position      VARCHAR(100) NULL,
   phone         VARCHAR(20)  NULL,
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -48,15 +49,15 @@ CREATE TABLE IF NOT EXISTS assignments (
   CONSTRAINT fk_asg_loc  FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO users (name, username, password_hash, role, position, phone) VALUES
- ("ผู้ดูแลระบบ","admin","$2b$10$kM2A8./4PAGr/kop/Wkhm.fEwYh2OLF3ECjFrnB1fIhxPevdIxFMm","ADMIN","ผู้ดูแลระบบ","080-000-0000"),
- ("สมชาย ใจดี","somchai","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","หัวหน้าเวร","081-111-1111"),
- ("สมหญิง รักงาน","somying","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","รองหัวหน้า","081-222-2222"),
- ("วิชัย มานะ","wichai","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","เจ้าหน้าที่","081-333-3333"),
- ("สุดา สวยงาม","suda","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","เจ้าหน้าที่","081-444-4444"),
- ("ประยุทธ ขยัน","prayut","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","เจ้าหน้าที่","081-555-5555"),
- ("มาลี ยิ้มแย้ม","malee","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","เจ้าหน้าที่","081-666-6666"),
- ("ธนา ใจกล้า","thana","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","เจ้าหน้าที่","081-777-7777");
+INSERT INTO users (name, username, password_hash, role, `rank`, position, phone) VALUES
+ ("ผู้ดูแลระบบ","admin","$2b$10$kM2A8./4PAGr/kop/Wkhm.fEwYh2OLF3ECjFrnB1fIhxPevdIxFMm","ADMIN","STAFF","ผู้ดูแลระบบ","080-000-0000"),
+ ("สมชาย ใจดี","somchai","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","HEAD",NULL,"081-111-1111"),
+ ("สมหญิง รักงาน","somying","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","DEPUTY",NULL,"081-222-2222"),
+ ("วิชัย มานะ","wichai","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","STAFF",NULL,"081-333-3333"),
+ ("สุดา สวยงาม","suda","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","STAFF",NULL,"081-444-4444"),
+ ("ประยุทธ ขยัน","prayut","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","DEPUTY",NULL,"081-555-5555"),
+ ("มาลี ยิ้มแย้ม","malee","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","STAFF",NULL,"081-666-6666"),
+ ("ธนา ใจกล้า","thana","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","HEAD",NULL,"081-777-7777");
 
 INSERT INTO locations (name, lat, lng, duties, cautions, contact_phone, need_morning, need_afternoon, need_night) VALUES
  ("ประตูทางเข้าหลัก",13.7651,100.5066,"ตรวจบัตรผู้มาติดต่อทุกคน แลกบัตรก่อนเข้าอาคาร","ห้ามจอดรถขวางทางเข้า","02-111-1234",2,2,2),

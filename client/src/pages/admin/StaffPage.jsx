@@ -6,8 +6,10 @@ import { api, errMsg } from "../../lib/api";
 import { toast } from "../../store/useToast";
 import useAuthStore from "../../store/useAuthStore";
 import { initials } from "../../lib/shifts";
+import RankBadge, { RankDot } from "../../components/RankBadge";
+import { RANKS, RANK_KEYS } from "../../lib/rank";
 
-const EMPTY = { name: "", username: "", password: "", role: "USER", position: "", phone: "" };
+const EMPTY = { name: "", username: "", password: "", role: "USER", rank: "STAFF", position: "", phone: "" };
 
 // สีพื้นหลังรูปโปรไฟล์ เลือกจากชื่อ (คนเดิมได้สีเดิมเสมอ)
 const TONES = [
@@ -21,6 +23,7 @@ function StaffAvatar({ user }) {
   return (
     <span className={`relative w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${cls}`} aria-hidden>
       {initials(user.name)}
+      {user.role !== "ADMIN" && <RankDot rank={user.rank} />}
       {user.role === "ADMIN" && (
         <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center ring-2 ring-white">
           <ShieldCheck size={11} />
@@ -83,7 +86,7 @@ export default function StaffPage() {
   const admins = all.filter((u) => u.role === "ADMIN").length;
   const needle = q.trim().toLowerCase();
   const byRole = all.filter((u) => role === "ALL" || u.role === role);
-  const list = byRole.filter((u) => !needle || `${u.name} ${u.username} ${u.position || ""} ${u.phone || ""}`.toLowerCase().includes(needle));
+  const list = byRole.filter((u) => !needle || `${u.name} ${u.username} ${u.position || ""} ${RANKS[u.rank]?.label || ""} ${u.phone || ""}`.toLowerCase().includes(needle));
 
   const roleOptions = [
     { value: "ALL", label: `ทั้งหมด ${all.length}` },
@@ -142,11 +145,10 @@ export default function StaffPage() {
                   </div>
                   <div className="flex items-center gap-x-2 gap-y-1 flex-wrap mt-0.5 text-xs text-mute">
                     <span>@<Hl text={u.username} q={needle} /></span>
-                    {(u.position || u.role === "ADMIN") && (
-                      <span className={`font-semibold rounded-md px-1.5 py-0.5 ${u.role === "ADMIN" ? "bg-ink text-white" : "bg-paper text-ink group-hover:bg-white"}`}>
-                        <Hl text={u.position || "ผู้ดูแลระบบ"} q={needle} />
-                      </span>
-                    )}
+                    {u.role === "ADMIN"
+                      ? <span className="font-semibold rounded-md px-1.5 py-0.5 bg-ink text-white">ผู้ดูแลระบบ</span>
+                      : <RankBadge rank={u.rank} />}
+                    {u.position && <span className="text-ink"><Hl text={u.position} q={needle} /></span>}
                     {u.phone && (
                       <a href={`tel:${u.phone}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 hover:text-ink">
                         <Phone size={11} /><Hl text={u.phone} q={needle} />
@@ -176,8 +178,22 @@ export default function StaffPage() {
             <Field label="ชื่อ-นามสกุล"><input className={inputCls} value={form.name} onChange={set("name")} required autoFocus /></Field>
             <Field label="ชื่อผู้ใช้" hint="ใช้เข้าสู่ระบบ ภาษาอังกฤษหรือตัวเลข"><input className={inputCls} value={form.username} onChange={set("username")} required autoCapitalize="none" /></Field>
             {!form.id && <Field label="รหัสผ่านเริ่มต้น" hint="อย่างน้อย 6 ตัว แจ้งพนักงานให้เปลี่ยนเองภายหลัง"><input className={inputCls} type="text" value={form.password} onChange={set("password")} required minLength={6} /></Field>}
+            {form.role === "USER" && (
+              <div>
+                <span id="rank-label" className="block text-sm font-semibold mb-1.5">ตำแหน่ง</span>
+                <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-labelledby="rank-label">
+                  {RANK_KEYS.map((k) => (
+                    <button key={k} type="button" role="radio" aria-checked={form.rank === k} onClick={() => setForm((f) => ({ ...f, rank: k }))}
+                      className={`h-10 rounded-xl border text-sm font-semibold transition-colors ${form.rank === k ? "border-ink bg-ink text-white" : "border-line hover:bg-paper"}`}>
+                      {RANKS[k].label}
+                    </button>
+                  ))}
+                </div>
+                <span className="block text-xs text-mute mt-1">หัวหน้าและรองหัวหน้าจะขึ้นก่อนในรายชื่อ และเพื่อนร่วมกะจะเห็นตำแหน่งนี้</span>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
-              <Field label="ตำแหน่ง"><input className={inputCls} value={form.position} onChange={set("position")} placeholder="เจ้าหน้าที่" /></Field>
+              <Field label="หน้าที่ (ไม่บังคับ)"><input className={inputCls} value={form.position} onChange={set("position")} placeholder="เช่น ประจำป้อมหน้า" /></Field>
               <Field label="เบอร์โทร"><input className={inputCls} value={form.phone} onChange={set("phone")} inputMode="tel" /></Field>
             </div>
             <Field label="สิทธิ์">

@@ -6,6 +6,7 @@ import { Avatar, Button, Field, inputCls } from "../../components/ui";
 import { api, errMsg } from "../../lib/api";
 import { toast } from "../../store/useToast";
 import useMyShifts from "../../store/useMyShifts";
+import RankBadge from "../../components/RankBadge";
 
 export default function ProfilePage() {
   const { user, logout } = useAuthStore();
@@ -35,6 +36,7 @@ export default function ProfilePage() {
         <div className="flex-1 min-w-0">
           <div className="text-lg font-semibold">{user.name}</div>
           <div className="text-sm text-mute">@{user.username}{user.position ? ` · ${user.position}` : ""}</div>
+          {user.role === "USER" && <div className="mt-2 flex items-center gap-2 text-sm"><span className="text-mute">ตำแหน่ง</span><RankBadge rank={user.rank} size="md" /></div>}
         </div>
       </section>
 
