@@ -41,6 +41,212 @@
   box-shadow: 0 1px 2px rgb(23 25 28 / 0.04), 0 8px 24px rgb(23 25 28 / 0.05);
 }
 
+/* ---------- หน้าเข้าสู่ระบบ ---------- */
+/* พื้นหลังทั้งหน้า: เทาอ่อนอมเขียว */
+.login-bg {
+  background:
+    radial-gradient(60% 60% at 10% 0%, rgb(46 158 104 / 0.10), transparent 70%),
+    radial-gradient(50% 50% at 100% 100%, rgb(46 158 104 / 0.08), transparent 70%),
+    var(--color-paper);
+}
+.login-card {
+  animation: login-card-in 0.7s cubic-bezier(.2, .8, .2, 1) both;
+}
+@media (min-width: 768px) {
+  .login-card { box-shadow: 0 30px 80px -30px rgb(23 25 28 / 0.25), 0 2px 6px rgb(23 25 28 / 0.04); }
+}
+@keyframes login-card-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+}
+
+/* แผนที่พื้นหลัง: ย้อมเป็นโทนเข้ม แล้วค่อย ๆ เลื่อนซูม (Ken Burns) */
+.login-map {
+  animation: login-fade-in 1.2s ease-out both, login-pan 40s ease-in-out infinite alternate;
+}
+.login-map .leaflet-container {
+  background: #15171a;
+  cursor: default;
+}
+.login-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) grayscale(0.55) brightness(0.72) contrast(1.1);
+}
+@keyframes login-pan {
+  from { transform: scale(1) translate(0, 0); }
+  to { transform: scale(1.08) translate(-3%, 2%); }
+}
+
+/* หมุดจุดเวร (หน้าตาเดียวกับ .pin บนแผนที่ในแอป) */
+.login-mpin {
+  position: absolute;
+  translate: -50% -50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: login-drop 0.6s cubic-bezier(.3, 1.5, .5, 1) both;
+}
+.login-mpin-c {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.35);
+}
+.login-mpin-c i {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 0 2px #fff;
+}
+.login-mpin-l {
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #fff;
+  border-radius: 7px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+}
+.login-mpin-l b {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c);
+}
+/* หมุดหลัก: สีเข้ม + วงสัญญาณกระจายออก */
+.login-mpin.main .login-mpin-c {
+  width: 42px;
+  height: 42px;
+  background: var(--color-ink);
+  color: #fff;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.9), 0 8px 20px rgb(0 0 0 / 0.4);
+}
+.login-mpin.main .login-mpin-c::before,
+.login-mpin.main .login-mpin-c::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgb(255 255 255 / 0.7);
+  animation: login-signal 2.4s ease-out infinite;
+}
+.login-mpin.main .login-mpin-c::after { animation-delay: 1.2s; }
+@keyframes login-drop {
+  from { opacity: 0; transform: translateY(-14px) scale(0.6); }
+}
+@keyframes login-signal {
+  from { opacity: 0.8; scale: 1; }
+  to { opacity: 0; scale: 2.4; }
+}
+@media (max-width: 767px) {
+  .login-mpin { scale: 0.8; }
+}
+
+/* ฟอร์ม: ไล่กันลอยขึ้นมาทีละแถว */
+.login-fade { animation: login-fade-in 0.6s ease-out both; }
+.login-rise { animation: login-rise-in 0.6s cubic-bezier(.2, .8, .2, 1) both; }
+.login-pop { animation: login-pop-in 0.35s cubic-bezier(.3, 1.6, .5, 1) both; }
+.login-shake { animation: login-shake 0.45s cubic-bezier(.36, .07, .19, .97); }
+@keyframes login-fade-in {
+  from { opacity: 0; }
+}
+@keyframes login-pop-in {
+  from { scale: 0; }
+}
+@keyframes login-rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+}
+@keyframes login-shake {
+  15%, 85% { transform: translateX(-2px); }
+  30%, 70% { transform: translateX(5px); }
+  45%, 55% { transform: translateX(-7px); }
+  50% { transform: translateX(7px); }
+}
+
+/* ปุ่ม: แสงวิ่งผ่านตอนชี้ */
+.login-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.18) 50%, transparent 70%);
+  translate: -110% 0;
+  transition: translate 0.7s ease;
+}
+.login-btn:hover::before { translate: 110% 0; }
+
+/* สถานะเข้าสู่ระบบสำเร็จ: วงกลมเขียวขยายออก + เครื่องหมายถูกค่อย ๆ วาด + แถบโหลดด้านล่าง (0.9s = เวลาก่อนเปลี่ยนหน้า) */
+.login-tick {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #3ec482;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: login-pop-in 0.35s cubic-bezier(.3, 1.6, .5, 1) both;
+}
+.login-tick path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+  animation: login-draw 0.35s ease-out 0.2s forwards;
+}
+@keyframes login-draw {
+  to { stroke-dashoffset: 0; }
+}
+.login-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: #3ec482;
+  transform-origin: left;
+  animation: login-progress 0.9s cubic-bezier(.4, 0, .2, 1) both;
+}
+@keyframes login-progress {
+  from { transform: scaleX(0); }
+}
+
+/* จุดสามจุดตอนกำลังตรวจสอบ */
+.login-dots { display: inline-flex; gap: 4px; }
+.login-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: login-dot 0.9s ease-in-out infinite;
+}
+.login-dots i:nth-child(2) { animation-delay: 0.15s; }
+.login-dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes login-dot {
+  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-card, .login-map, .login-mpin, .login-mpin.main .login-mpin-c::before, .login-mpin.main .login-mpin-c::after,
+  .login-rise, .login-fade, .login-pop, .login-shake, .login-dots i, .login-tick, .login-progress {
+    animation: none !important;
+  }
+}
+
 /* ---------- หมุดบนแผนที่ (สร้างเป็น HTML ใน MapView) ---------- */
 .leaflet-container {
   font-family: var(--font-sans);
