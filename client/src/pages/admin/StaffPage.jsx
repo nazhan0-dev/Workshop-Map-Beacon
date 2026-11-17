@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Pencil, Trash2, KeyRound, Search, X, Phone, ShieldCheck, UserSearch } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Search, X, Phone, ShieldCheck, UserSearch, UserRound, Check } from "lucide-react";
 import Header from "../../components/layout/Header";
 import { Button, Modal, Field, inputCls, Segmented } from "../../components/ui";
 import { api, errMsg } from "../../lib/api";
@@ -196,12 +196,39 @@ export default function StaffPage() {
               <Field label="หน้าที่ (ไม่บังคับ)"><input className={inputCls} value={form.position} onChange={set("position")} placeholder="เช่น ประจำป้อมหน้า" /></Field>
               <Field label="เบอร์โทร"><input className={inputCls} value={form.phone} onChange={set("phone")} inputMode="tel" /></Field>
             </div>
-            <Field label="สิทธิ์">
-              <select className={inputCls} value={form.role} onChange={set("role")} disabled={form.id === me.id}>
-                <option value="USER">รปภ. (ดูเวรของตัวเอง)</option>
-                <option value="ADMIN">ผู้ดูแล (จัดเวรได้)</option>
-              </select>
-            </Field>
+            <div>
+              <span id="role-label" className="block text-sm font-semibold mb-1.5">สิทธิ์การใช้งาน</span>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="role-label">
+                {[
+                  { v: "USER", icon: UserRound, title: "รปภ.", sub: "ดูเวรของตัวเอง" },
+                  { v: "ADMIN", icon: ShieldCheck, title: "ผู้ดูแล", sub: "จัดเวรและจัดการระบบ" },
+                ].map((o) => {
+                  const on = form.role === o.v;
+                  const locked = form.id === me.id;
+                  return (
+                    <button key={o.v} type="button" role="radio" aria-checked={on} disabled={locked && !on}
+                      onClick={() => !locked && setForm((f) => ({ ...f, role: o.v }))}
+                      className={`relative flex items-center gap-3 p-3 rounded-xl border-[1.5px] text-left transition-all duration-200
+                        ${on ? "border-ink bg-white shadow-[0_4px_14px_-6px_rgb(23_25_28/0.25)]" : "border-line hover:border-ink/30 hover:bg-paper"}
+                        disabled:opacity-40 disabled:cursor-not-allowed`}>
+                      <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${on ? "bg-ink text-white" : "bg-paper text-mute"}`}>
+                        <o.icon size={17} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold">{o.title}</span>
+                        <span className="block text-xs text-mute">{o.sub}</span>
+                      </span>
+                      {on && (
+                        <span className="pop-in absolute top-2 right-2 w-4 h-4 rounded-full bg-brand text-white flex items-center justify-center">
+                          <Check size={10} strokeWidth={3} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {form.id === me.id && <span className="block text-xs text-mute mt-1">เปลี่ยนสิทธิ์ของตัวเองไม่ได้ เพื่อไม่ให้ระบบไม่มีผู้ดูแล</span>}
+            </div>
           </form>
         )}
       </Modal>
