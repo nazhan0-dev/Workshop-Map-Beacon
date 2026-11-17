@@ -355,7 +355,142 @@
   transition: transform 0.15s;
 }
 .pin:hover .pin-c {
-  transform: scale(1.06);
+  transform: translateY(-2px) scale(1.08);
+  box-shadow: 0 10px 22px rgb(23 25 28 / 0.22);
+}
+/* กล่องข้อมูลตอนชี้หมุด */
+.pin-tip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  min-width: 170px;
+  max-width: 230px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--color-ink);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: normal;
+  box-shadow: 0 12px 28px -8px rgb(23 25 28 / 0.45);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 6px) scale(0.96);
+  transform-origin: bottom center;
+  transition: opacity 0.16s ease, transform 0.2s cubic-bezier(.2, .9, .3, 1.2);
+}
+.pin-tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  translate: -50% 0;
+  border: 6px solid transparent;
+  border-top-color: var(--color-ink);
+}
+.pin:hover .pin-tip {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+  transition-delay: 0.08s;
+  pointer-events: auto; /* คลิกที่กล่องได้ (คลิกแล้วเท่ากับคลิกหมุด) */
+  cursor: pointer;
+}
+/* สะพานล่องหนระหว่างกล่องกับหมุด เลื่อนเมาส์จากหมุดขึ้นไปที่กล่องแล้วกล่องไม่หาย */
+.pin-tip::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 12px;
+}
+.pin:hover .pin-tip:hover {
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.9), 0 12px 28px -8px rgb(23 25 28 / 0.45);
+}
+.pin-tip b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pin-tip-s {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  color: rgb(255 255 255 / 0.8);
+}
+.pin-tip-s i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pin-tip-p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgb(255 255 255 / 0.12);
+}
+.pin-tip-p span {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+  font-weight: 500;
+}
+.pin-tip-p span.more { background: transparent; color: rgb(255 255 255 / 0.6); }
+.pin-tip-h {
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgb(255 255 255 / 0.45);
+}
+
+/* หมุดหล่นลงมาตอนปรากฏ หรือตอนสถานะ/จำนวนคนเปลี่ยน */
+.pin {
+  animation: pin-drop 0.45s cubic-bezier(.3, 1.5, .5, 1) both;
+}
+@keyframes pin-drop {
+  from { opacity: 0; translate: 0 -14px; scale: 0.7; }
+}
+/* จุดที่ยังไม่มีคน: วงแดงกระจายเตือน */
+.pin.warn .pin-c::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--color-danger);
+  animation: pin-warn 2s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes pin-warn {
+  from { opacity: 0.55; scale: 1; }
+  to { opacity: 0; scale: 1.9; }
+}
+
+/* พื้นแผนที่: ลดสีลงเล็กน้อยให้หมุดเด่น แต่ยังมีชีวิตชีวา (หน้าเข้าสู่ระบบมีสีของตัวเองที่ .login-map) */
+.leaflet-tile-pane {
+  filter: saturate(0.85) contrast(1.04) brightness(1.02);
+}
+
+/* แถบพนักงานว่าง: ลอยขึ้นมาจากด้านล่าง + ชื่อไล่กันเข้ามา */
+.tray-in {
+  animation: tray-in 0.5s cubic-bezier(.2, .9, .3, 1.15) 0.2s both;
+}
+@keyframes tray-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+}
+.chip-in {
+  animation: chip-in 0.35s cubic-bezier(.3, 1.4, .5, 1) both;
+}
+@keyframes chip-in {
+  from { opacity: 0; transform: translateX(10px) scale(0.92); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pin, .pin.warn .pin-c::after, .chip-in, .tray-in { animation: none; }
 }
 .pin-dot {
   position: absolute;
