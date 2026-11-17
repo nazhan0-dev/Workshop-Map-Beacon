@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Map, LayoutGrid, Users, MapPin, LogOut } from "lucide-react";
+import { Map, LayoutGrid, Users, MapPin, LogOut, ShieldCheck } from "lucide-react";
 import { BeaconAppIcon } from "../Logo";
 import useAuthStore from "../../store/useAuthStore";
 import { initials } from "../../lib/shifts";
@@ -37,6 +37,18 @@ export default function AdminLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const onLogout = () => { logout(); navigate("/login"); };
+  const [meOpen, setMeOpen] = useState(false);
+  const meBox = useRef(null);
+
+  // การ์ดบัญชี: ปิดเมื่อคลิกข้างนอก / Esc
+  useEffect(() => {
+    if (!meOpen) return;
+    const onDown = (e) => { if (!meBox.current?.contains(e.target)) setMeOpen(false); };
+    const onKey = (e) => e.key === "Escape" && setMeOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [meOpen]);
   const side = useIndicator("y");
   const bottom = useIndicator("x");
 
@@ -85,9 +97,41 @@ export default function AdminLayout() {
           </span>
           <span className="text-[11px] font-semibold text-faint transition-colors group-hover:text-danger">ออกจากระบบ</span>
         </button>
-        <div title={user?.name} className="nav-in w-11 h-11 rounded-full bg-brand-soft text-brand font-semibold text-sm flex items-center justify-center"
-          style={{ animationDelay: "0.35s" }}>
-          {initials(user?.name)}
+        {/* z-index ต้องอยู่ที่ตัวห่อ: อนิเมชัน nav-in ใช้ transform ทำให้ z ของการ์ดด้านในไม่มีผลข้ามเนื้อหาหน้า */}
+        <div ref={meBox} className="nav-in relative z-[1200]" style={{ animationDelay: "0.35s" }}>
+          <button onClick={() => setMeOpen((v) => !v)} aria-haspopup="dialog" aria-expanded={meOpen} aria-label={`บัญชีของ ${user?.name || ""}`}
+            className={`group relative w-11 h-11 rounded-full bg-ink text-white text-sm font-bold flex items-center justify-center transition-all duration-200
+              hover:scale-105 ${meOpen ? "ring-[3px] ring-ink/15" : "hover:ring-[3px] hover:ring-ink/10"}`}>
+            {initials(user?.name)}
+            <span className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-brand text-white flex items-center justify-center ring-2 ring-white">
+              <ShieldCheck size={10} />
+            </span>
+          </button>
+
+          {meOpen && (
+            <div role="dialog" aria-label="บัญชีของฉัน"
+              className="me-pop absolute left-[calc(100%+14px)] bottom-0 z-[1200] w-64 bg-white rounded-2xl border border-line shadow-[0_16px_40px_-12px_rgb(23_25_28/0.3)] p-3">
+              <div className="flex items-center gap-3 p-1">
+                <span className="w-11 h-11 rounded-full bg-ink text-white text-sm font-bold flex items-center justify-center shrink-0">{initials(user?.name)}</span>
+                <div className="min-w-0">
+                  <div className="font-semibold truncate">{user?.name}</div>
+                  <div className="text-xs text-mute truncate">@{user?.username}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 mt-2 mx-1 text-xs font-semibold text-brand bg-brand-soft rounded-lg px-2.5 py-1.5">
+                <ShieldCheck size={13} />สิทธิ์ผู้ดูแลระบบ
+              </div>
+              <div className="border-t border-line mt-3 pt-2 flex flex-col">
+                <button onClick={() => { setMeOpen(false); navigate("/admin/staff"); }}
+                  className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm hover:bg-paper text-left">
+                  <Users size={16} className="text-mute" />จัดการบัญชีพนักงาน
+                </button>
+                <button onClick={onLogout} className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-danger hover:bg-danger-soft text-left">
+                  <LogOut size={16} />ออกจากระบบ
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 

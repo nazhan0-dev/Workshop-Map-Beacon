@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Plus, Pencil, Trash2, KeyRound, Search, X, Phone, ShieldCheck, UserSearch, UserRound, Check } from "lucide-react";
 import Header from "../../components/layout/Header";
 import { Button, Modal, Field, inputCls, Segmented } from "../../components/ui";
+import { avatarTone } from "../../lib/avatar";
 import { api, errMsg } from "../../lib/api";
 import { toast } from "../../store/useToast";
 import useAuthStore from "../../store/useAuthStore";
@@ -11,15 +12,8 @@ import { RANKS, RANK_KEYS } from "../../lib/rank";
 
 const EMPTY = { name: "", username: "", password: "", role: "USER", rank: "STAFF", position: "", phone: "" };
 
-// สีพื้นหลังรูปโปรไฟล์ เลือกจากชื่อ (คนเดิมได้สีเดิมเสมอ)
-const TONES = [
-  "bg-[#e5f4ec] text-[#1f7a4f]", "bg-[#e8eefc] text-[#2f55b5]", "bg-[#fbf1e3] text-[#a0621a]",
-  "bg-[#f4e9fb] text-[#7a3fa3]", "bg-[#fbeae8] text-[#b23b32]", "bg-[#e6f5f6] text-[#1f7680]",
-];
-const toneOf = (s) => TONES[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % TONES.length];
-
 function StaffAvatar({ user }) {
-  const cls = user.role === "ADMIN" ? "bg-ink text-white" : toneOf(user.name);
+  const cls = user.role === "ADMIN" ? "bg-ink text-white" : avatarTone(user.name);
   return (
     <span className={`relative w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${cls}`} aria-hidden>
       {initials(user.name)}

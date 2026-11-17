@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import useToast from "../store/useToast";
 import { initials, STATUS } from "../lib/shifts";
+import { avatarTone } from "../lib/avatar";
 
 const BTN = {
   base: "inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold whitespace-nowrap transition disabled:opacity-50 disabled:cursor-not-allowed",
@@ -31,12 +32,13 @@ export function IconButton({ label, className = "", children, ...props }) {
   );
 }
 
-export function Avatar({ name, size = 32, dark = false }) {
+export function Avatar({ name, size = 32, dark = false, title }) {
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-full font-semibold shrink-0 ${dark ? "bg-ink text-white" : "bg-track text-ink"}`}
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}
-      aria-hidden
+      className={`inline-flex items-center justify-center rounded-full font-bold shrink-0 ${dark ? "bg-ink text-white" : avatarTone(name)}`}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
+      title={title}
+      aria-hidden={title ? undefined : true}
     >
       {initials(name)}
     </span>

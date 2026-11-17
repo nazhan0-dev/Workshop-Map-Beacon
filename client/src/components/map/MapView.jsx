@@ -55,6 +55,7 @@ function buildPinIcon(m) {
 }
 
 const NO_INSETS = { top: 0, bottom: 0 };
+const DEFAULT_CENTER = [13.7563, 100.5018]; // กรุงเทพฯ
 
 const meIcon = L.divIcon({ className: "", iconSize: [0, 0], html: '<div class="me-dot"></div>' });
 
@@ -64,7 +65,8 @@ function FitBounds({ points, fitKey, insets }) {
   const done = useRef(null);
   const size = useMapSize();
   useEffect(() => {
-    if (!points.length || done.current === fitKey) return;
+    // fitKey="manual" = ผู้ใช้คุมมุมมองเอง ไม่ต้องจัดให้
+    if (!points.length || fitKey === "manual" || done.current === fitKey) return;
     map.invalidateSize();
     const size = map.getSize();
     if (size.x < 50 || size.y < 50) return; // ยังไม่มีขนาด รอ resize แล้วค่อย fit
@@ -118,13 +120,14 @@ function ClickToPick({ picking, onPick }) {
  * (count/need/people ใช้แสดงในกล่องข้อมูลตอนชี้หมุด)
  */
 export default function MapView({
-  markers = [], selectedId, onSelect, picking = false, onPick, me, className = "", fitKey = "init", insets = NO_INSETS, children,
+  markers = [], selectedId, onSelect, picking = false, onPick, me, className = "", fitKey = "init", insets = NO_INSETS,
+  center = DEFAULT_CENTER, zoom = 13, children,
 }) {
   const points = useMemo(() => markers.map((m) => [m.lat, m.lng]), [markers]);
   const selected = markers.find((m) => m.id === selectedId);
 
   return (
-    <MapContainer center={[13.7563, 100.5018]} zoom={13} minZoom={10} zoomControl={false} className={`h-full w-full ${className}`} attributionControl>
+    <MapContainer center={center} zoom={zoom} minZoom={10} zoomControl={false} className={`h-full w-full ${className}`} attributionControl>
       <Layers />
       <FitBounds points={points} fitKey={fitKey} insets={insets} />
       <FlyToSelected lat={selected?.lat} lng={selected?.lng} />

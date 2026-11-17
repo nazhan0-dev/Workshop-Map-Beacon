@@ -39,14 +39,23 @@ export default function LocationsList({ locations, assignments, shift, selectedI
                 <span className="block text-xs text-mute">ต้องการ {need} คน</span>
               </span>
               {!selected && (
-                <span className="flex">
-                  {people.length
-                    ? people.slice(0, 3).map((p, i) => (
-                        <span key={p.id} className={i ? "-ml-1.5" : ""} style={{ boxShadow: "0 0 0 2px #fff", borderRadius: 999 }}>
-                          <Avatar name={p.user_name} size={28} />
+                <span className="avatar-stack flex items-center">
+                  {people.length ? (
+                    <>
+                      {people.slice(0, 3).map((p, i) => (
+                        <span key={p.id} className={`relative rounded-full ring-2 ring-white transition-transform duration-200 ${i ? "-ml-2" : ""}`}
+                          style={{ zIndex: 3 - i }}>
+                          <Avatar name={p.user_name} size={28} title={p.user_name} />
                         </span>
-                      ))
-                    : <span className="text-xs text-mute">ยังไม่มีคน</span>}
+                      ))}
+                      {people.length > 3 && (
+                        <span className="-ml-2 relative w-7 h-7 rounded-full ring-2 ring-white bg-ink text-white text-[10px] font-bold flex items-center justify-center"
+                          title={people.slice(3).map((p) => p.user_name).join(", ")}>
+                          +{people.length - 3}
+                        </span>
+                      )}
+                    </>
+                  ) : <span className="text-xs text-mute">ยังไม่มีคน</span>}
                 </span>
               )}
               <span key={people.length} className="pop-in text-sm font-semibold w-8 text-right">{people.length}/{need}</span>
