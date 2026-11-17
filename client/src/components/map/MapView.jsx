@@ -10,21 +10,56 @@ const SHIELD =
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 // หมุด: วงกลมไอคอนโล่ + จุดสีสถานะ + ป้ายจำนวนคน
-function pinIcon({ name, status, label, selected }) {
+// เก็บไอคอนไว้ใช้ซ้ำ: ถ้าหน้าตาไม่เปลี่ยน Leaflet จะไม่สร้าง DOM ใหม่ อนิเมชันตอนหล่นจึงเล่นเฉพาะตอนหมุดเปลี่ยนจริง
+const iconCache = new Map();
+function pinIcon(m) {
+  const key = [m.name, m.status, m.label, m.selected ? 1 : 0, m.count, m.need, (m.people || []).join(",")].join("|");
+  if (!iconCache.has(key)) iconCache.set(key, buildPinIcon(m));
+  return iconCache.get(key);
+}
+
+// ข้อความสถานะในกล่องที่ขึ้นตอนชี้หมุด
+function statusText({ status, count, need }) {
+  if (count == null || need == null) return STATUS[status]?.label || "";
+  if (status === "none") return "กะนี้ไม่ต้องมีคน";
+  if (status === "ok") return `ครบแล้ว · ${count}/${need} คน`;
+  if (status === "empty") return `ยังไม่มีคน · ต้องการ ${need} คน`;
+  return `ขาดอีก ${need - count} คน · ${count}/${need}`;
+}
+
+// กล่องข้อมูลตอนชี้หมุด: ชื่อจุด / สถานะ / คนที่จัดแล้ว
+function tipHtml(m, color) {
+  const people = m.people || [];
+  const names = people.slice(0, 4).map((n) => `<span>${esc(n.split(" ")[0])}</span>`).join("");
+  const more = people.length > 4 ? `<span class="more">+${people.length - 4}</span>` : "";
+  return `<div class="pin-tip" role="tooltip">
+    <b>${esc(m.name)}</b>
+    <div class="pin-tip-s"><i style="background:${color}"></i>${esc(statusText(m))}</div>
+    ${people.length ? `<div class="pin-tip-p">${names}${more}</div>` : ""}
+    <div class="pin-tip-h">คลิกเพื่อดูและจัดคนในจุดนี้</div>
+  </div>`;
+}
+
+function buildPinIcon(m) {
+  const { name, status, label, selected } = m;
   const color = STATUS[status]?.color || STATUS.none.color;
   return L.divIcon({
     className: "",
     iconSize: [0, 0],
-    html: `<div class="pin${selected ? " sel" : ""}">
+    html: `<div class="pin${selected ? " sel" : ""}${status === "empty" ? " warn" : ""}">
+      ${selected || !m.people ? "" : tipHtml(m, color)}
       <div class="pin-c">${SHIELD}<span class="pin-dot" style="background:${color}"></span></div>
-      <div class="pin-l">${selected ? `<b>${esc(name)}</b>` : ""}${label ? `<span><i style="background:${color}"></i>${esc(label)}</span>` : ""}</div>
+      ${selected || label ? `<div class="pin-l">${selected ? `<b>${esc(name)}</b>` : ""}${label ? `<span><i style="background:${color}"></i>${esc(label)}</span>` : ""}</div>` : ""}
     </div>`,
   });
 }
 
+const NO_INSETS = { top: 0, bottom: 0 };
+
 const meIcon = L.divIcon({ className: "", iconSize: [0, 0], html: '<div class="me-dot"></div>' });
 
-function FitBounds({ points, fitKey }) {
+// insets: พื้นที่ที่ถูกของลอยบังด้านบน/ล่าง (px) จะเว้นไว้ไม่ให้หมุดไปอยู่ใต้ของเหล่านั้น
+function FitBounds({ points, fitKey, insets }) {
   const map = useMap();
   const done = useRef(null);
   const size = useMapSize();
@@ -34,12 +69,12 @@ function FitBounds({ points, fitKey }) {
     const size = map.getSize();
     if (size.x < 50 || size.y < 50) return; // ยังไม่มีขนาด รอ resize แล้วค่อย fit
     done.current = fitKey;
-    if (points.length === 1) map.setView(points[0], 17);
-    else {
-      const pad = Math.round(Math.min(70, size.x / 6, size.y / 6));
-      map.fitBounds(points, { padding: [pad, pad], maxZoom: 17 });
-    }
-  }, [points, fitKey, map, size]);
+    const pad = Math.round(Math.min(60, size.x / 6, size.y / 6));
+    const top = Math.min(insets.top, size.y / 4), bottom = Math.min(insets.bottom, size.y / 4);
+    map.fitBounds(points.length === 1 ? [points[0], points[0]] : points, {
+      paddingTopLeft: [pad, pad + top], paddingBottomRight: [pad, pad + bottom], maxZoom: 17,
+    });
+  }, [points, fitKey, map, size, insets]);
   return null;
 }
 
@@ -59,11 +94,12 @@ function useMapSize() {
   return size;
 }
 
-function FlyToSelected({ target }) {
+// บินไปหาหมุดที่เลือก (ทำเฉพาะตอนพิกัดเปลี่ยน ไม่ใช่ทุกครั้งที่หน้า render)
+function FlyToSelected({ lat, lng }) {
   const map = useMap();
   useEffect(() => {
-    if (target) map.flyTo(target, Math.max(map.getZoom(), 16), { duration: 0.6 });
-  }, [target, map]);
+    if (lat != null && lng != null) map.flyTo([lat, lng], Math.max(map.getZoom(), 16), { duration: 0.6 });
+  }, [lat, lng, map]);
   return null;
 }
 
@@ -78,10 +114,11 @@ function ClickToPick({ picking, onPick }) {
 }
 
 /**
- * markers: [{ id, lat, lng, name, status, label }]
+ * markers: [{ id, lat, lng, name, status, label, count?, need?, people? }]
+ * (count/need/people ใช้แสดงในกล่องข้อมูลตอนชี้หมุด)
  */
 export default function MapView({
-  markers = [], selectedId, onSelect, picking = false, onPick, me, className = "", fitKey = "init", children,
+  markers = [], selectedId, onSelect, picking = false, onPick, me, className = "", fitKey = "init", insets = NO_INSETS, children,
 }) {
   const points = useMemo(() => markers.map((m) => [m.lat, m.lng]), [markers]);
   const selected = markers.find((m) => m.id === selectedId);
@@ -89,13 +126,13 @@ export default function MapView({
   return (
     <MapContainer center={[13.7563, 100.5018]} zoom={13} minZoom={10} zoomControl={false} className={`h-full w-full ${className}`} attributionControl>
       <Layers />
-      <FitBounds points={points} fitKey={fitKey} />
-      <FlyToSelected target={selected ? [selected.lat, selected.lng] : null} />
+      <FitBounds points={points} fitKey={fitKey} insets={insets} />
+      <FlyToSelected lat={selected?.lat} lng={selected?.lng} />
       <ClickToPick picking={picking} onPick={onPick} />
       {markers.map((m) => (
         <Marker key={m.id} position={[m.lat, m.lng]}
           icon={pinIcon({ ...m, selected: m.id === selectedId })}
-          zIndexOffset={m.id === selectedId ? 1000 : 0}
+          zIndexOffset={m.id === selectedId ? 1000 : 0} riseOnHover riseOffset={2000}
           eventHandlers={{ click: () => onSelect?.(m.id) }} />
       ))}
       {me && <Marker position={me} icon={meIcon} interactive={false} />}
