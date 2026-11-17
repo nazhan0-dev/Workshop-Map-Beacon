@@ -3,6 +3,7 @@ import { Router } from "express";
 import { query } from "../config/db.js";
 import { HttpError } from "../middlewares/error.js";
 import { SHIFT_INFO, isShift, isDateStr, adjacentShifts, addDays } from "../utils/shifts.js";
+import { approvedLeaveOn, LEAVE_LABEL } from "../utils/leaves.js";
 
 const router = Router();
 
@@ -62,6 +63,9 @@ router.post("/", async (req, res) => {
   }
 
   await assertCapacity(loc, date, shift);
+
+  const leave = await approvedLeaveOn(user.id, date, shift);
+  if (leave) throw new HttpError(409, `${user.name} ${LEAVE_LABEL[leave.type]}กะนี้ (อนุมัติแล้ว)`, { code: "ON_LEAVE" });
 
   if (!force) {
     const adj = adjacentShifts(date, shift);
@@ -132,7 +136,7 @@ router.post("/copy", async (req, res) => {
       const loc = locById[r.location_id];
       const k = `${r.location_id}|${r.shift}`;
       const need = loc ? loc[SHIFT_INFO[r.shift].needCol] : 0;
-      if (taken.has(`${r.user_id}|${r.shift}`) || (count[k] || 0) >= need) { skipped++; continue; }
+      if (taken.has(`${r.user_id}|${r.shift}`) || (count[k] || 0) >= need || (await approvedLeaveOn(r.user_id, dst, r.shift))) { skipped++; continue; }
       await query("INSERT INTO assignments (user_id, location_id, date, shift) VALUES (?, ?, ?, ?)",
         [r.user_id, r.location_id, dst, r.shift]);
       taken.add(`${r.user_id}|${r.shift}`);
@@ -142,7 +146,7 @@ router.post("/copy", async (req, res) => {
   }
   const message = copied + skipped === 0
     ? (mode === "week" ? "สัปดาห์ต้นทางไม่มีเวรให้คัดลอก" : "วันต้นทางไม่มีเวรให้คัดลอก")
-    : `คัดลอก ${copied} เวร` + (skipped ? ` (ข้าม ${skipped} ที่ซ้ำหรือจุดเต็ม)` : "");
+    : `คัดลอก ${copied} เวร` + (skipped ? ` (ข้าม ${skipped} ที่ซ้ำ จุดเต็ม หรือคนลา)` : "");
   res.json({ copied, skipped, message });
 });
 

@@ -16,6 +16,9 @@ export function errorHandler(err, req, res, next) {
   if (err instanceof HttpError) {
     return res.status(err.status).json({ message: err.message, ...err.extra });
   }
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({ message: "ไฟล์ใหญ่เกินไป" });
+  }
   if (err.code === "ER_DUP_ENTRY") {
     return res.status(409).json({ message: "ข้อมูลซ้ำกับที่มีอยู่แล้ว" });
   }

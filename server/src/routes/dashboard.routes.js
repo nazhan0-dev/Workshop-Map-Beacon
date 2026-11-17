@@ -3,6 +3,8 @@ import { Router } from "express";
 import { query } from "../config/db.js";
 import { HttpError } from "../middlewares/error.js";
 import { SHIFTS, SHIFT_INFO, isDateStr } from "../utils/shifts.js";
+import { INCIDENT_SQL, fixRows } from "../utils/incidents.js";
+import { LEAVE_SQL, fixLeave } from "../utils/leaves.js";
 
 const router = Router();
 
@@ -11,7 +13,7 @@ router.get("/", async (req, res) => {
   const { date } = req.query;
   if (!isDateStr(date)) throw new HttpError(400, "ระบุวันที่ (YYYY-MM-DD)");
 
-  const [[{ staff }], locations, assignments, freeStaff] = await Promise.all([
+  const [[{ staff }], locations, assignments, freeStaff, incidents, leaves, [{ pendingLeaves }]] = await Promise.all([
     query("SELECT COUNT(*) AS staff FROM users WHERE role = 'USER'"),
     query("SELECT * FROM locations ORDER BY id"),
     query(
@@ -22,9 +24,20 @@ router.get("/", async (req, res) => {
     ),
     query(
       `SELECT id, name, position, \`rank\` FROM users
-       WHERE role = 'USER' AND id NOT IN (SELECT user_id FROM assignments WHERE date = ?) ORDER BY name`,
+       WHERE role = 'USER' AND id NOT IN (SELECT user_id FROM assignments WHERE date = ?)
+         AND id NOT IN (SELECT user_id FROM leaves WHERE status = 'APPROVED' AND ? BETWEEN start_date AND end_date)
+       ORDER BY name`,
+      [date, date]
+    ),
+    // เหตุการณ์ของวันนั้น + เรื่องเก่าที่ยังไม่ปิด
+    query(
+      `${INCIDENT_SQL} WHERE i.date = ? OR i.status IN ('OPEN','ACK')
+       ORDER BY i.status = 'CLOSED', FIELD(i.level,'URGENT','WARN','NORMAL'), i.created_at DESC LIMIT 20`,
       [date]
     ),
+    // ใครลาวันนี้ (อนุมัติแล้ว)
+    query(`${LEAVE_SQL} WHERE lv.status = 'APPROVED' AND ? BETWEEN lv.start_date AND lv.end_date ORDER BY u.name`, [date]),
+    query("SELECT COUNT(*) AS pendingLeaves FROM leaves WHERE status = 'PENDING'"),
   ]);
 
   const count = {};
@@ -58,6 +71,9 @@ router.get("/", async (req, res) => {
     understaffed,
     freeStaff,
     acknowledgements: assignments,
+    incidents: fixRows(incidents),
+    leaves: leaves.map(fixLeave),
+    pendingLeaves: Number(pendingLeaves),
   });
 });
 
