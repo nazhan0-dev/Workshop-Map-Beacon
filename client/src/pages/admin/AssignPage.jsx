@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, X, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Plus, X, AlertTriangle } from "lucide-react";
 import useDutyStore from "../../store/useDutyStore";
 import { toast } from "../../store/useToast";
 import { errMsg } from "../../lib/api";
 import { SHIFTS, SHIFT_INFO, needOf, statusOf, addDays, weekStart, fmtShort, fmtLong } from "../../lib/shifts";
-import { Button, Segmented, Modal, Avatar, StatusDot, Spinner } from "../../components/ui";
+import { Button, Segmented, Tabs, Modal, Avatar, StatusDot, Spinner } from "../../components/ui";
 import MapView, { ZoomControls, MapOverlay } from "../../components/map/MapView";
 import LocationsList from "../../components/locations/LocationsList";
 import PersonnelList, { FreeTray } from "../../components/people/PersonnelList";
 import AddLocationModal from "../../components/locations/AddLocationModal";
+import DatePicker from "../../components/DatePicker";
 
 export default function AssignPage() {
   const s = useDutyStore();
@@ -23,7 +24,8 @@ export default function AssignPage() {
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyMode, setCopyMode] = useState(null);
   const [busy, setBusy] = useState(false);
-  const dateInput = useRef(null);
+  const [dateDir, setDateDir] = useState(1); // ทิศที่วันที่เลื่อนเข้ามา (1 = ไปข้างหน้า)
+  const goDate = (d) => { setDateDir(d >= date ? 1 : -1); s.setDate(d); };
 
   // โหลดครั้งแรก (รับค่าจาก Dashboard ผ่าน ?date=&shift=&loc=)
   useEffect(() => {
@@ -98,24 +100,19 @@ export default function AssignPage() {
       <section className="bg-paper md:bg-white md:rounded-t-3xl px-4 pt-5 pb-3 md:px-5 md:pt-6 flex flex-col gap-4 md:col-start-1 md:row-start-1">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold flex-1">จัดเวร</h1>
-          <button onClick={() => s.setDate(addDays(date, -1))} aria-label="วันก่อนหน้า" className="w-9 h-9 rounded-xl hover:bg-paper flex items-center justify-center"><ChevronLeft size={18} /></button>
-          <button onClick={() => dateInput.current?.showPicker?.()}
-            className="relative h-9 px-3 rounded-xl border border-line bg-white text-sm font-semibold flex items-center gap-2">
-            <CalendarDays size={16} />{fmtShort(date)}
-            <input ref={dateInput} type="date" value={date} onChange={(e) => e.target.value && s.setDate(e.target.value)}
-              className="absolute inset-0 opacity-0 pointer-events-none" tabIndex={-1} aria-label="เลือกวันที่" />
+          <button onClick={() => goDate(addDays(date, -1))} aria-label="วันก่อนหน้า"
+            className="group w-9 h-9 rounded-xl hover:bg-paper flex items-center justify-center">
+            <ChevronLeft size={18} className="transition-transform group-hover:-translate-x-0.5 group-active:-translate-x-1" />
           </button>
-          <button onClick={() => s.setDate(addDays(date, 1))} aria-label="วันถัดไป" className="w-9 h-9 rounded-xl hover:bg-paper flex items-center justify-center"><ChevronRight size={18} /></button>
+          <DatePicker value={date} onChange={goDate} dir={dateDir} />
+          <button onClick={() => goDate(addDays(date, 1))} aria-label="วันถัดไป"
+            className="group w-9 h-9 rounded-xl hover:bg-paper flex items-center justify-center">
+            <ChevronRight size={18} className="transition-transform group-hover:translate-x-0.5 group-active:translate-x-1" />
+          </button>
         </div>
         <Segmented options={shiftOptions} value={shift} onChange={s.setShift} />
-        <div className="flex gap-6 border-b border-line">
-          {[["locations", "จุดเวร", locations.length], ["people", "พนักงาน", staff.length]].map(([k, l, n]) => (
-            <button key={k} onClick={() => setTab(k)}
-              className={`pb-2.5 text-sm font-semibold ${tab === k ? "text-ink shadow-[inset_0_-2px_0_var(--color-ink)]" : "text-faint hover:text-mute"}`}>
-              {l}<span className="text-faint font-medium ml-1">{n}</span>
-            </button>
-          ))}
-        </div>
+        <Tabs value={tab} onChange={setTab}
+          tabs={[{ value: "locations", label: "จุดเวร", count: locations.length }, { value: "people", label: "พนักงาน", count: staff.length }]} />
       </section>
 
       {/* แผนที่ */}
@@ -158,13 +155,13 @@ export default function AssignPage() {
         <div className="md:hidden w-9 h-1 rounded bg-line mx-auto my-2.5" />
         <div className="flex items-center gap-4 px-2 py-3 text-[13px] text-mute">
           {[["ok", "ครบ"], ["low", "ขาด"], ["empty", "ว่าง"]].map(([k, l]) => (
-            <span key={k} className="flex items-center gap-1.5"><StatusDot status={k} />{l} <b className="text-ink">{summary[k]}</b></span>
+            <span key={k} className="flex items-center gap-1.5"><StatusDot status={k} />{l} <b key={summary[k]} className="pop-in inline-block text-ink">{summary[k]}</b></span>
           ))}
           {s.loading && <Spinner className="w-4 h-4 ml-auto" />}
         </div>
         {tab === "locations" ? (
           locations.length ? (
-            <LocationsList locations={locations} assignments={assignments} shift={shift} selectedId={selectedId}
+            <LocationsList key={`${date}-${shift}`} locations={locations} assignments={assignments} shift={shift} selectedId={selectedId}
               onSelect={(id) => s.select(id === selectedId ? null : id)} onDrop={handleDrop} onRemove={removeAsg} onAdd={setAddFor} />
           ) : (
             <p className="text-sm text-mute text-center py-8">ยังไม่มีจุดเวร กด "เพิ่มจุด" แล้วคลิกบนแผนที่</p>
