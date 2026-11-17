@@ -1,5 +1,5 @@
 // ชิ้นส่วน UI ที่ใช้ซ้ำทั้งแอป
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import useToast from "../store/useToast";
 import { initials, STATUS } from "../lib/shifts";
@@ -48,16 +48,55 @@ export function StatusDot({ status, size = 8 }) {
 }
 
 // แถบเลือก เช่น เช้า / บ่าย / ดึก
+// ปุ่มเลือกแบบแบ่งช่อง: พื้นขาวเลื่อนไปยังช่องที่เลือก
 export function Segmented({ options, value, onChange, className = "" }) {
+  const idx = options.findIndex((o) => o.value === value);
   return (
-    <div className={`flex bg-track rounded-xl p-1 ${className}`} role="tablist">
+    <div className={`relative flex bg-track rounded-xl p-1 ${className}`} role="tablist">
+      {idx >= 0 && (
+        <span aria-hidden="true" className="seg-pill absolute top-1 bottom-1 left-1 rounded-[9px] bg-white shadow-sm"
+          style={{ width: `calc((100% - 8px) / ${options.length})`, transform: `translateX(${idx * 100}%)` }} />
+      )}
       {options.map((o) => (
         <button key={o.value} role="tab" aria-selected={value === o.value} onClick={() => onChange(o.value)}
-          className={`flex-1 rounded-[9px] px-2.5 py-1.5 text-sm font-semibold transition ${value === o.value ? "bg-white text-ink shadow-sm" : "text-mute hover:text-ink"}`}>
+          className={`relative z-10 flex-1 rounded-[9px] px-2.5 py-1.5 text-sm font-semibold transition-colors duration-200 ${value === o.value ? "text-ink" : "text-mute hover:text-ink"}`}>
           {o.label}
           {o.sub && <small className={`block text-[11px] font-medium ${value === o.value ? "text-mute" : "text-faint"}`}>{o.sub}</small>}
         </button>
       ))}
+    </div>
+  );
+}
+
+// แท็บมีเส้นใต้ เลื่อนไปยังแท็บที่เลือก
+// tabs: [{ value, label, count }]
+export function Tabs({ tabs, value, onChange, className = "" }) {
+  const refs = useRef({});
+  const [bar, setBar] = useState(null);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = refs.current[value];
+      if (el) setBar({ left: el.offsetLeft, width: el.offsetWidth });
+    };
+    measure();
+    document.fonts?.ready.then(measure);
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [value, tabs.length]);
+
+  return (
+    <div className={`relative flex gap-6 border-b border-line ${className}`} role="tablist">
+      {tabs.map((t) => (
+        <button key={t.value} ref={(el) => (refs.current[t.value] = el)} role="tab" aria-selected={value === t.value}
+          onClick={() => onChange(t.value)}
+          className={`pb-2.5 text-sm font-semibold transition-colors duration-200 ${value === t.value ? "text-ink" : "text-faint hover:text-mute"}`}>
+          {t.label}
+          {t.count != null && <span key={t.count} className="pop-in inline-block text-faint font-medium ml-1">{t.count}</span>}
+        </button>
+      ))}
+      {bar && <span aria-hidden="true" className="tab-bar absolute -bottom-px left-0 h-0.5 rounded-full bg-ink"
+        style={{ width: bar.width, transform: `translateX(${bar.left}px)` }} />}
     </div>
   );
 }
