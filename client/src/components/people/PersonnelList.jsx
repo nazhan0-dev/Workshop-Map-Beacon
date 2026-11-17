@@ -9,14 +9,14 @@ export default function PersonnelList({ staff, byUser, onPick }) {
   if (!staff.length) return <p className="text-sm text-mute py-6 text-center">ยังไม่มีพนักงาน เพิ่มได้ที่เมนูพนักงาน</p>;
   return (
     <ul>
-      {staff.map((u) => {
+      {staff.map((u, i) => {
         const a = byUser[u.id];
         return (
-          <li key={u.id} draggable
+          <li key={u.id} draggable style={{ animationDelay: `${Math.min(i, 12) * 0.04}s` }}
             onDragStart={(e) => drag.start(e, a ? { kind: "asg", id: a.id, name: u.name, locationId: a.location_id } : { kind: "user", userId: u.id, name: u.name })}
             onDragEnd={drag.end}
             onClick={() => onPick?.(u)}
-            className="flex items-center gap-3 px-3 py-3 border-b border-line cursor-grab active:cursor-grabbing hover:bg-paper rounded-xl">
+            className="row-in flex items-center gap-3 px-3 py-3 border-b border-line cursor-grab active:cursor-grabbing hover:bg-paper rounded-xl transition-colors">
             <Avatar name={u.name} size={36} />
             <span className="flex-1 min-w-0">
               <span className="block font-semibold truncate">{u.name}</span>

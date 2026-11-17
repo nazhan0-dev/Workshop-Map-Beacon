@@ -13,7 +13,7 @@ export default function LocationsList({ locations, assignments, shift, selectedI
 
   return (
     <ul>
-      {locations.map((loc) => {
+      {locations.map((loc, i) => {
         const people = assignments.filter((a) => a.location_id === loc.id);
         const need = needOf(loc, shift);
         const status = statusOf(people.length, need);
@@ -29,9 +29,9 @@ export default function LocationsList({ locations, assignments, shift, selectedI
         };
 
         return (
-          <li key={loc.id} {...dropProps}
-            className={`transition ${selected || isOver ? "bg-paper rounded-2xl my-1.5" : "border-b border-line"} ${isOver ? (full ? "ring-2 ring-danger/50" : "ring-2 ring-brand/60") : ""}`}>
-            <button onClick={() => onSelect(loc.id)} className="w-full flex items-center gap-3 px-3 py-3.5 text-left">
+          <li key={loc.id} {...dropProps} style={{ animationDelay: `${Math.min(i, 12) * 0.04}s` }}
+            className={`row-in transition-all duration-200 ${selected || isOver ? "bg-paper rounded-2xl my-1.5" : "border-b border-line hover:bg-paper/60 hover:rounded-xl"} ${isOver ? (full ? "ring-2 ring-danger/50" : "ring-2 ring-brand/60") : ""}`}>
+            <button onClick={() => onSelect(loc.id)} className="group w-full flex items-center gap-3 px-3 py-3.5 text-left">
               <StatusDot status={status} />
               <span className="flex-1 min-w-0">
                 <span className="block font-semibold truncate">{loc.name}</span>
@@ -48,11 +48,11 @@ export default function LocationsList({ locations, assignments, shift, selectedI
                     : <span className="text-xs text-mute">ยังไม่มีคน</span>}
                 </span>
               )}
-              <span className="text-sm font-semibold w-8 text-right">{people.length}/{need}</span>
+              <span key={people.length} className="pop-in text-sm font-semibold w-8 text-right">{people.length}/{need}</span>
             </button>
 
             {(selected || isOver) && (
-              <div className="px-3 pb-3 flex flex-col gap-3">
+              <div className="expand-in px-3 pb-3 flex flex-col gap-3">
                 {people.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {people.map((p) => (
