@@ -2,10 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Check, Clock, ChevronLeft, ChevronRight, ArrowRight, Users, MapPin, ClipboardCheck, BellRing,
-  Sun, Sunset, Moon, AlertTriangle, UserX, PartyPopper,
+  Sun, Sunset, Moon, AlertTriangle, UserX, PartyPopper, Siren, CalendarOff,
 } from "lucide-react";
 import Header from "../../components/layout/Header";
 import RankBadge from "../../components/RankBadge";
+import IncidentRow from "../../components/incidents/IncidentRow";
+import IncidentModal from "../../components/incidents/IncidentModal";
+import { LeaveTypeChip } from "../../components/leaves/LeaveChips";
+import { shiftsText } from "../../lib/leaves";
 import DatePicker from "../../components/DatePicker";
 import { Avatar, StatusDot } from "../../components/ui";
 import { api, errMsg } from "../../lib/api";
@@ -130,6 +134,7 @@ export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const [incId, setIncId] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -254,6 +259,42 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex flex-col gap-3">
+              {/* เหตุการณ์: เรื่องของวันนี้ + เรื่องค้างจากวันก่อน */}
+              <Card icon={Siren} title="เหตุการณ์" delay={0.27}
+                aside={data.incidents.length ? <button onClick={() => navigate("/admin/incidents")} className="font-semibold text-ink hover:underline">ดูทั้งหมด</button> : null}>
+                {data.incidents.length === 0 ? <Empty icon={Check} text="ไม่มีรายงานเหตุการณ์" /> : (
+                  <ul className="-mx-3 divide-y divide-line">
+                    {data.incidents.slice(0, 5).map((i, n) => (
+                      <IncidentRow key={i.id} inc={i} onOpen={(x) => setIncId(x.id)} style={{ animationDelay: `${0.3 + n * 0.04}s` }} />
+                    ))}
+                  </ul>
+                )}
+                {incId && (
+                  <IncidentModal key={incId} id={incId} base="/incidents" canHandle onClose={() => setIncId(null)}
+                    onChanged={(r) => setData((d) => ({ ...d, incidents: d.incidents.map((i) => (i.id === r.id ? { ...i, ...r } : i)) }))} />
+                )}
+              </Card>
+
+              {/* ลาวันนี้ + คำขอที่รออนุมัติ */}
+              <Card icon={CalendarOff} title="ลาวันนี้" delay={0.29}
+                aside={<button onClick={() => navigate("/admin/leaves")} className={`font-semibold hover:underline ${data.pendingLeaves ? "text-warn" : "text-ink"}`}>
+                  {data.pendingLeaves ? `รออนุมัติ ${data.pendingLeaves}` : "ดูทั้งหมด"}</button>}>
+                {data.leaves.length === 0 ? <Empty icon={Check} text="ไม่มีใครลา" /> : data.leaves.map((lv, i) => {
+                  const open = lv.removed.length;
+                  return (
+                    <div key={lv.id} style={{ animationDelay: `${0.32 + Math.min(i, 8) * 0.04}s` }}
+                      className="row-in flex items-center gap-3 py-2.5 border-t border-line first:border-t-0">
+                      <Avatar name={lv.user_name} size={34} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold truncate">{lv.user_name}</div>
+                        <div className="text-xs text-mute">{shiftsText(lv.shifts)}{open ? ` · ถอนเวร ${open} กะ` : ""}</div>
+                      </div>
+                      <LeaveTypeChip type={lv.type} />
+                    </div>
+                  );
+                })}
+              </Card>
+
               {/* ยังไม่มีเวร */}
               <Card icon={UserX} title="ยังไม่มีเวรวันนี้" aside={`${data.freeStaff.length} คน`} delay={0.3}>
                 {data.freeStaff.length === 0 ? <Empty icon={Check} text="ทุกคนมีเวรแล้ว" /> : data.freeStaff.map((u, i) => (

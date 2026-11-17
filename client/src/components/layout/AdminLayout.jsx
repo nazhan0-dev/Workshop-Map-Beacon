@@ -1,8 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Map, LayoutGrid, Users, MapPin, LogOut, ShieldCheck } from "lucide-react";
+import { Map, LayoutGrid, Users, MapPin, LogOut, ShieldCheck, Siren, CalendarOff } from "lucide-react";
 import { BeaconAppIcon } from "../Logo";
 import useAuthStore from "../../store/useAuthStore";
+import useIncidentSummary from "../../store/useIncidentSummary";
+import useLeaveSummary from "../../store/useLeaveSummary";
+import usePolling from "../../lib/usePolling";
 import { initials } from "../../lib/shifts";
 
 const NAV = [
@@ -10,7 +13,22 @@ const NAV = [
   { to: "/admin/dashboard", label: "ภาพรวม", icon: LayoutGrid },
   { to: "/admin/staff", label: "พนักงาน", icon: Users },
   { to: "/admin/locations", label: "จุดเวร", icon: MapPin },
+  { to: "/admin/incidents", label: "รายงาน", icon: Siren, badge: "incidents" },
+  { to: "/admin/leaves", label: "การลา", icon: CalendarOff, badge: "leaves" },
 ];
+
+// ตัวเลขบนเมนู: รายงานค้าง (แดงเมื่อมีเรื่องด่วน) / คำขอลารออนุมัติ
+function NavBadge({ kind, className = "" }) {
+  const inc = useIncidentSummary();
+  const pendingLeaves = useLeaveSummary((s) => s.pending);
+  const n = kind === "leaves" ? pendingLeaves : inc.open;
+  const hot = kind === "incidents" && inc.urgent > 0;
+  if (!n) return null;
+  return (
+    <span className={`absolute min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center ring-2 ring-white ${hot ? "bg-danger text-white inc-pulse" : "bg-warn text-white"} ${className}`}
+      aria-label={kind === "leaves" ? `คำขอลารออนุมัติ ${n}` : `รายงานค้าง ${n} เรื่อง`}>{n > 99 ? "99+" : n}</span>
+  );
+}
 
 // หาตำแหน่งเมนูที่เลือกอยู่ เพื่อเลื่อนแถบไฮไลต์ไปวางตรงนั้น
 function useIndicator(axis) {
@@ -49,6 +67,7 @@ export default function AdminLayout() {
     document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
   }, [meOpen]);
+  usePolling(() => { useIncidentSummary.getState().refresh(); useLeaveSummary.getState().refresh(); }, 30000);
   const side = useIndicator("y");
   const bottom = useIndicator("x");
 
@@ -69,7 +88,7 @@ export default function AdminLayout() {
         )}
 
         <nav className="flex flex-col items-center gap-2">
-          {NAV.map(({ to, label, icon }, i) => { const Icon = icon; return (
+          {NAV.map(({ to, label, icon, badge }, i) => { const Icon = icon; return (
             <NavLink key={to} to={to} ref={(el) => (side.refs.current[i] = el)}
               className="nav-in group relative z-10 flex flex-col items-center gap-1 w-[72px] outline-offset-4 rounded-xl"
               style={{ animationDelay: `${0.06 + i * 0.05}s` }}>
@@ -79,6 +98,7 @@ export default function AdminLayout() {
                     ${isActive ? "border-transparent text-white" : "border-line text-ink group-hover:bg-paper group-hover:-translate-y-0.5"}`}>
                     <Icon size={19} key={isActive ? "on" : "off"} className={isActive ? "nav-bounce" : ""} />
                   </span>
+                  {badge && <NavBadge kind={badge} className="top-[-4px] right-[6px]" />}
                   <span className={`text-[11px] font-semibold leading-tight transition-colors ${isActive ? "text-ink" : "text-faint group-hover:text-ink"}`}>
                     {label}
                   </span>
@@ -144,7 +164,7 @@ export default function AdminLayout() {
         {bottom.pos != null && (
           <span className="nav-pill absolute top-2 w-10 h-10 -translate-x-1/2 rounded-[13px] bg-ink" style={{ left: bottom.pos }} />
         )}
-        {NAV.map(({ to, label, icon }, i) => { const Icon = icon; return (
+        {NAV.map(({ to, label, icon, badge }, i) => { const Icon = icon; return (
           <NavLink key={to} to={to} ref={(el) => (bottom.refs.current[i] = el)}
             className="relative z-10 flex flex-col items-center gap-0.5 text-[11px] font-semibold">
             {({ isActive }) => (
@@ -152,6 +172,7 @@ export default function AdminLayout() {
                 <span className={`w-10 h-10 rounded-[13px] flex items-center justify-center transition-colors ${isActive ? "text-white" : "text-faint"}`}>
                   <Icon size={21} key={isActive ? "on" : "off"} className={isActive ? "nav-bounce" : ""} />
                 </span>
+                {badge && <NavBadge kind={badge} className="-top-1 -right-1" />}
                 <span className={`transition-colors ${isActive ? "text-ink" : "text-faint"}`}>{label}</span>
               </>
             )}

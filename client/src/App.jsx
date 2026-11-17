@@ -12,6 +12,10 @@ import LocationsPage from "./pages/admin/LocationsPage";
 import MyShiftsPage from "./pages/user/MyShiftsPage";
 import MyMapPage from "./pages/user/MyMapPage";
 import ProfilePage from "./pages/user/ProfilePage";
+import ReportsPage from "./pages/user/ReportsPage";
+import IncidentsPage from "./pages/admin/IncidentsPage";
+import LeavesAdminPage from "./pages/admin/LeavesPage";
+import LeavesPage from "./pages/user/LeavesPage";
 
 // กันหน้าตาม role: ADMIN ไป /admin, USER ไป /me
 function RequireRole({ role, children }) {
@@ -43,10 +47,14 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="staff" element={<StaffPage />} />
           <Route path="locations" element={<LocationsPage />} />
+          <Route path="incidents" element={<IncidentsPage />} />
+          <Route path="leaves" element={<LeavesAdminPage />} />
         </Route>
         <Route path="/me" element={<RequireRole role="USER"><UserLayout /></RequireRole>}>
           <Route index element={<MyShiftsPage />} />
           <Route path="map" element={<MyMapPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="leaves" element={<LeavesPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
         <Route path="*" element={<Home />} />

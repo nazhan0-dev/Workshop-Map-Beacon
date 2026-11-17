@@ -4,12 +4,14 @@ import { Avatar } from "../ui";
 import { drag } from "../../lib/drag";
 import { initials } from "../../lib/shifts";
 import RankBadge from "../RankBadge";
+import { OnLeaveTag } from "../leaves/LeaveChips";
 
 /**
  * รายชื่อพนักงานในกะที่เลือก ลากไปวางที่จุดได้
  * byUser: { [userId]: assignment }  คนที่มีเวรกะนี้แล้ว
+ * leaveOf: { [userId]: leave }  คนที่ลา/ขอลากะนี้
  */
-export default function PersonnelList({ staff, byUser, onPick }) {
+export default function PersonnelList({ staff, byUser, onPick, leaveOf = {} }) {
   if (!staff.length) return <p className="text-sm text-mute py-6 text-center">ยังไม่มีพนักงาน เพิ่มได้ที่เมนูพนักงาน</p>;
   return (
     <ul>
@@ -23,11 +25,12 @@ export default function PersonnelList({ staff, byUser, onPick }) {
             className="row-in flex items-center gap-3 px-3 py-3 border-b border-line cursor-grab active:cursor-grabbing hover:bg-paper rounded-xl transition-colors">
             <Avatar name={u.name} size={36} />
             <span className="flex-1 min-w-0">
-              <span className="block font-semibold truncate">{u.name}</span>
+              <span className="flex items-center gap-1.5 font-semibold min-w-0"><span className="truncate">{u.name}</span><OnLeaveTag leave={leaveOf[u.id]} /></span>
               <span className="flex items-center gap-1.5 text-xs text-mute min-w-0"><RankBadge rank={u.rank} quiet /><span className="truncate">{u.position || (u.rank === "STAFF" || !u.rank ? "เจ้าหน้าที่" : "")}</span></span>
             </span>
             {a
               ? <span className="text-xs text-mute truncate max-w-[110px]">{a.location_name}</span>
+              : leaveOf[u.id]?.status === "APPROVED" ? null
               : <span className="text-xs font-semibold text-brand bg-brand-soft px-2 py-1 rounded-md">ว่าง</span>}
           </li>
         );

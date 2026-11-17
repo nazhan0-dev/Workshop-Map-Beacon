@@ -13,7 +13,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 // เก็บไอคอนไว้ใช้ซ้ำ: ถ้าหน้าตาไม่เปลี่ยน Leaflet จะไม่สร้าง DOM ใหม่ อนิเมชันตอนหล่นจึงเล่นเฉพาะตอนหมุดเปลี่ยนจริง
 const iconCache = new Map();
 function pinIcon(m) {
-  const key = [m.name, m.status, m.label, m.selected ? 1 : 0, m.count, m.need, (m.people || []).join(",")].join("|");
+  const key = [m.name, m.status, m.label, m.selected ? 1 : 0, m.count, m.need, (m.people || []).join(","), m.alert?.open || 0, m.alert?.urgent || 0].join("|");
   if (!iconCache.has(key)) iconCache.set(key, buildPinIcon(m));
   return iconCache.get(key);
 }
@@ -36,6 +36,7 @@ function tipHtml(m, color) {
     <b>${esc(m.name)}</b>
     <div class="pin-tip-s"><i style="background:${color}"></i>${esc(statusText(m))}</div>
     ${people.length ? `<div class="pin-tip-p">${names}${more}</div>` : ""}
+    ${m.alert ? `<div class="pin-tip-a${m.alert.urgent ? " u" : ""}">มีเหตุการณ์ค้าง ${m.alert.open} เรื่อง${m.alert.urgent ? ` (ด่วน ${m.alert.urgent})` : ""}</div>` : ""}
     <div class="pin-tip-h">คลิกเพื่อดูและจัดคนในจุดนี้</div>
   </div>`;
 }
@@ -48,7 +49,7 @@ function buildPinIcon(m) {
     iconSize: [0, 0],
     html: `<div class="pin${selected ? " sel" : ""}${status === "empty" ? " warn" : ""}">
       ${selected || !m.people ? "" : tipHtml(m, color)}
-      <div class="pin-c">${SHIELD}<span class="pin-dot" style="background:${color}"></span></div>
+      <div class="pin-c">${SHIELD}<span class="pin-dot" style="background:${color}"></span>${m.alert ? `<span class="pin-alert${m.alert.urgent ? " u" : ""}" aria-label="มีเหตุการณ์ค้าง">!</span>` : ""}</div>
       ${selected || label ? `<div class="pin-l">${selected ? `<b>${esc(name)}</b>` : ""}${label ? `<span><i style="background:${color}"></i>${esc(label)}</span>` : ""}</div>` : ""}
     </div>`,
   });
@@ -116,7 +117,7 @@ function ClickToPick({ picking, onPick }) {
 }
 
 /**
- * markers: [{ id, lat, lng, name, status, label, count?, need?, people? }]
+ * markers: [{ id, lat, lng, name, status, label, count?, need?, people?, alert?: { open, urgent } }]
  * (count/need/people ใช้แสดงในกล่องข้อมูลตอนชี้หมุด)
  */
 export default function MapView({

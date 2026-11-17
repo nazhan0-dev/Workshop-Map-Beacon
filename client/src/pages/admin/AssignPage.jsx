@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, ChevronDown, Copy, Plus, X, AlertTriangle, CalendarDays, CalendarRange, Info } from "lucide-react";
 import useDutyStore from "../../store/useDutyStore";
 import { toast } from "../../store/useToast";
-import { errMsg } from "../../lib/api";
+import { api, errMsg } from "../../lib/api";
 import { SHIFTS, SHIFT_INFO, needOf, statusOf, addDays, weekStart, fmtShort, fmtLong } from "../../lib/shifts";
 import { Button, Segmented, Tabs, Modal, Avatar, StatusDot, Spinner } from "../../components/ui";
 import MapView, { ZoomControls, MapOverlay } from "../../components/map/MapView";
@@ -12,6 +12,9 @@ import PersonnelList, { FreeTray } from "../../components/people/PersonnelList";
 import AddLocationModal from "../../components/locations/AddLocationModal";
 import DatePicker from "../../components/DatePicker";
 import RankBadge from "../../components/RankBadge";
+import useIncidentSummary from "../../store/useIncidentSummary";
+import { OnLeaveTag } from "../../components/leaves/LeaveChips";
+import { coversShift } from "../../lib/leaves";
 
 // พื้นที่ที่ปุ่มด้านบนและแถบพนักงานว่างด้านล่างบังแผนที่ (px)
 const MAP_INSETS = { top: 56, bottom: 90 };
@@ -52,8 +55,21 @@ export default function AssignPage() {
     useDutyStore.getState().fetchAssignments().catch((e) => toast(errMsg(e), "error"));
   }, [params]);
 
+  // ใครลา/ขอลาวันนี้ (ลาที่อนุมัติแล้วจะไม่อยู่ในถาดพนักงานว่าง และจัดเข้าเวรไม่ได้)
+  const [leaves, setLeaves] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    api.get("/leaves/on", { date }).then((r) => alive && setLeaves(r)).catch(() => alive && setLeaves([]));
+    return () => { alive = false; };
+  }, [date]);
+  const leaveOf = useMemo(() => {
+    const m = {};
+    leaves.filter((l) => coversShift(l, shift)).forEach((l) => { if (m[l.user_id]?.status !== "APPROVED") m[l.user_id] = l; });
+    return m;
+  }, [leaves, shift]);
+
   const byUser = useMemo(() => Object.fromEntries(assignments.map((a) => [a.user_id, a])), [assignments]);
-  const free = staff.filter((u) => !byUser[u.id]);
+  const free = staff.filter((u) => !byUser[u.id] && leaveOf[u.id]?.status !== "APPROVED");
 
   // ชื่อคนที่จัดแล้วในแต่ละจุด
   const peopleByLoc = useMemo(() => {
@@ -66,12 +82,13 @@ export default function AssignPage() {
   const summary = { ok: 0, low: 0, empty: 0 };
   locations.forEach((l) => { const st = statusOf(countOf(l.id), needOf(l, shift)); if (st in summary) summary[st]++; });
 
+  const incByLoc = useIncidentSummary((st) => st.byLocation);
   const markers = locations.map((l) => {
     const count = countOf(l.id), need = needOf(l, shift);
     return {
       id: l.id, lat: l.lat, lng: l.lng, name: l.name,
       status: statusOf(count, need), label: `${count}/${need}`,
-      count, need, people: peopleByLoc[l.id] || [],
+      count, need, people: peopleByLoc[l.id] || [], alert: incByLoc[l.id],
     };
   });
 
@@ -211,7 +228,7 @@ export default function AssignPage() {
             <p className="text-sm text-mute text-center py-8">ยังไม่มีจุดเวร กด "เพิ่มจุด" แล้วคลิกบนแผนที่</p>
           )
         ) : (
-          <PersonnelList staff={staff} byUser={byUser} />
+          <PersonnelList staff={staff} byUser={byUser} leaveOf={leaveOf} />
         )}
       </section>
 
@@ -222,13 +239,15 @@ export default function AssignPage() {
           {staff.map((u) => {
             const a = byUser[u.id];
             if (a && a.location_id === addFor?.id) return null;
+            const off = leaveOf[u.id]?.status === "APPROVED";
             return (
               <li key={u.id}>
-                <button onClick={() => { const loc = addFor; setAddFor(null); handleDrop(a ? { kind: "asg", id: a.id, name: u.name, locationId: a.location_id } : { kind: "user", userId: u.id, name: u.name }, loc); }}
-                  className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-paper text-left">
+                <button disabled={off} onClick={() => { const loc = addFor; setAddFor(null); handleDrop(a ? { kind: "asg", id: a.id, name: u.name, locationId: a.location_id } : { kind: "user", userId: u.id, name: u.name }, loc); }}
+                  className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-paper text-left disabled:opacity-50 disabled:hover:bg-transparent disabled:cursor-not-allowed">
                   <Avatar name={u.name} size={36} />
-                  <span className="flex-1"><span className="flex items-center gap-1.5 font-semibold">{u.name}<RankBadge rank={u.rank} quiet /></span><span className="block text-xs text-mute">{u.position}</span></span>
-                  {a ? <span className="text-xs text-mute">ย้ายมาจาก {a.location_name}</span>
+                  <span className="flex-1"><span className="flex items-center gap-1.5 font-semibold">{u.name}<RankBadge rank={u.rank} quiet /><OnLeaveTag leave={leaveOf[u.id]} /></span><span className="block text-xs text-mute">{u.position}</span></span>
+                  {off ? <span className="text-xs text-mute">ลาอยู่</span>
+                     : a ? <span className="text-xs text-mute">ย้ายมาจาก {a.location_name}</span>
                      : <span className="text-xs font-semibold text-brand bg-brand-soft px-2 py-1 rounded-md">ว่าง</span>}
                 </button>
               </li>
