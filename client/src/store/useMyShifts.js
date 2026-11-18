@@ -14,6 +14,17 @@ const useMyShifts = create((set) => ({
       set({ error: e.response?.data?.message || "โหลดเวรไม่สำเร็จ" });
     }
   },
+  // เข้ากะ / ออกกะ: อัปเดตเวรนั้นในรายการทันที
+  checkIn: async (id, body) => {
+    const r = await api.post(`/me/assignments/${id}/check-in`, body);
+    set((s) => ({ items: s.items.map((i) => (i.id === id ? { ...i, ...r } : i)) }));
+    return r;
+  },
+  checkOut: async (id) => {
+    const r = await api.post(`/me/assignments/${id}/check-out`);
+    set((s) => ({ items: s.items.map((i) => (i.id === id ? { ...i, ...r } : i)) }));
+    return r;
+  },
   ack: async (id) => {
     const r = await api.post(`/me/assignments/${id}/ack`);
     set((s) => ({ items: s.items.map((i) => (i.id === id ? { ...i, acknowledged_at: r.acknowledged_at } : i)) }));

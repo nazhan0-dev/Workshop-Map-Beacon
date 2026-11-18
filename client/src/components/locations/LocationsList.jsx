@@ -4,6 +4,7 @@ import { Avatar, StatusDot } from "../ui";
 import { needOf, statusOf } from "../../lib/shifts";
 import { drag } from "../../lib/drag";
 import { RankDot } from "../RankBadge";
+import AttendanceChip from "../attendance/AttendanceChip";
 
 /**
  * รายการจุดเวรของกะที่เลือก ลากพนักงานมาวางที่แถวได้
@@ -73,6 +74,7 @@ export default function LocationsList({ locations, assignments, shift, selectedI
                         className="inline-flex items-center gap-2 h-[34px] pl-1 pr-2 rounded-full bg-white border border-line text-[13px] font-semibold cursor-grab active:cursor-grabbing">
                         <span className="relative"><Avatar name={p.user_name} size={26} /><RankDot rank={p.user_rank} /></span>
                         {p.user_name.split(" ")[0]}
+                        <AttendanceChip a={p} quiet className="text-[10px] px-1 py-0" />
                         <button onClick={() => onRemove(p)} aria-label={`ถอน ${p.user_name} ออก`} className="text-faint hover:text-danger"><X size={14} /></button>
                       </span>
                     ))}

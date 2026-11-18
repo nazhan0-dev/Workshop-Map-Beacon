@@ -5,7 +5,7 @@ import MapView from "../map/MapView";
 import { api, errMsg } from "../../lib/api";
 import { toast } from "../../store/useToast";
 
-const EMPTY = { name: "", lat: "", lng: "", need_morning: 1, need_afternoon: 1, need_night: 1, duties: "", cautions: "", contact_phone: "" };
+const EMPTY = { name: "", lat: "", lng: "", need_morning: 1, need_afternoon: 1, need_night: 1, checkin_radius: 200, duties: "", cautions: "", contact_phone: "" };
 const SHIFTS = [
   { key: "need_morning", label: "เช้า", time: "06–14", icon: Sun },
   { key: "need_afternoon", label: "บ่าย", time: "14–22", icon: Sunset },
@@ -70,7 +70,8 @@ export default function AddLocationModal({ initial, near, onClose, onSaved }) {
     setSaving(true);
     try {
       const body = { ...f, lat: Number(f.lat), lng: Number(f.lng),
-        need_morning: Number(f.need_morning), need_afternoon: Number(f.need_afternoon), need_night: Number(f.need_night) };
+        need_morning: Number(f.need_morning), need_afternoon: Number(f.need_afternoon), need_night: Number(f.need_night),
+        checkin_radius: Number(f.checkin_radius) || 200 };
       const loc = editing ? await api.put(`/locations/${initial.id}`, body) : await api.post("/locations", body);
       toast(editing ? "บันทึกจุดเวรแล้ว" : `เพิ่ม ${loc.name} แล้ว`);
       onSaved?.(loc);
@@ -151,6 +152,25 @@ export default function AddLocationModal({ initial, near, onClose, onSaved }) {
             ))}
           </div>
           <span className="block text-xs text-mute mt-1.5">ตั้งเป็น 0 ถ้ากะนั้นไม่ต้องมีคนประจำจุดนี้</span>
+        </div>
+
+        {/* ระยะที่กดเข้ากะได้ */}
+        <div>
+          <label htmlFor="loc-radius" className="block text-sm font-semibold mb-1.5">ระยะที่กดเข้ากะได้</label>
+          <div className="flex items-center gap-2">
+            <div className="w-24 shrink-0">
+              <input id="loc-radius" type="number" min={30} max={5000} step={10} className={inputCls}
+                value={f.checkin_radius} onChange={set("checkin_radius")} />
+            </div>
+            <span className="text-sm text-mute whitespace-nowrap">เมตร</span>
+            <div className="flex gap-1 ml-auto" role="group" aria-label="ระยะที่ใช้บ่อย">
+              {[100, 200, 500].map((r) => (
+                <button key={r} type="button" onClick={() => setF((x) => ({ ...x, checkin_radius: r }))}
+                  className={`h-8 px-2.5 rounded-lg text-xs font-semibold border ${Number(f.checkin_radius) === r ? "bg-ink text-white border-ink" : "border-line hover:bg-paper"}`}>{r}</button>
+              ))}
+            </div>
+          </div>
+          <span className="block text-xs text-mute mt-1.5">รปภ. ต้องอยู่ในระยะนี้ถึงจะกดเข้ากะได้ ในอาคาร GPS คลาดเคลื่อนง่าย แนะนำ 200 ม. ขึ้นไป</span>
         </div>
 
         <Field label="หน้าที่ที่จุดนี้">

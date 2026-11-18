@@ -334,6 +334,72 @@ test("leaves: admin อนุมัติ / ไม่อนุมัติ / ห
   assert.equal(cp.status, 200);
 });
 
+test("check-in: เข้ากะ / ออกกะ / ระยะ / เวลา / หัวหน้าดูทีม", async () => {
+  // กะที่กำลังเป็นอยู่ตอนนี้ (กะดึกหลังเที่ยงคืนนับเป็นของเมื่อวาน)
+  const h = new Date().getHours();
+  const cur = h < 6 ? { date: day(-1), shift: "NIGHT" } : h < 14 ? { date: TODAY, shift: "MORNING" } : h < 22 ? { date: TODAY, shift: "AFTERNOON" } : { date: TODAY, shift: "NIGHT" };
+
+  assert.equal((await put(`/locations/${S.loc}`, { name: "จุดทดสอบ 2", lat: 13.76, lng: 100.51, checkin_radius: 5 }, T.admin)).status, 400);
+  const loc = await put(`/locations/${S.loc}`, { name: "จุดทดสอบ 2", lat: 13.76, lng: 100.51, need_morning: 2, need_afternoon: 2, need_night: 2, checkin_radius: 150 }, T.admin);
+  assert.equal(loc.body.checkin_radius, 150);
+
+  const u = await post("/users", { name: "เข้ากะ ทดสอบ", username: "checker", password: "123456" }, T.admin);
+  const tc = await login("checker");
+  const a = await post("/assignments", { userId: u.body.id, locationId: S.loc, ...cur, force: true }, T.admin);
+  assert.equal(a.status, 201);
+  const later = await post("/assignments", { userId: u.body.id, locationId: S.loc, date: day(3), shift: "MORNING", force: true }, T.admin);
+
+  const mine = await get(`/me/assignments?from=${cur.date}&days=5`, tc);
+  const row = mine.body.find((x) => x.id === a.body.id);
+  assert.equal(row.checkin_radius, 150);
+  assert.ok(["WAITING", "MISSING"].includes(row.attendance), row.attendance);
+
+  assert.equal((await post(`/me/assignments/${later.body.id}/check-in`, { lat: 13.76, lng: 100.51 }, tc)).body.code, "TOO_EARLY");
+  assert.equal((await post(`/me/assignments/${a.body.id}/check-in`, { lat: 13.76, lng: 100.51 }, T.wichai)).status, 404, "เข้ากะแทนคนอื่นไม่ได้");
+  assert.equal((await post(`/me/assignments/${a.body.id}/check-out`, undefined, tc)).status, 400, "ยังไม่เข้ากะ ออกไม่ได้");
+  const nopos = await post(`/me/assignments/${a.body.id}/check-in`, {}, tc);
+  if (nopos.status === 400) assert.equal(nopos.body.code, "NO_LOCATION"); // CHECKIN_GPS=off จะผ่านเลย
+  else { assert.equal(nopos.status, 200); }
+
+  if (nopos.status === 400) {
+    const far = await post(`/me/assignments/${a.body.id}/check-in`, { lat: 13.70, lng: 100.51, accuracy: 30 }, tc);
+    assert.equal(far.body.code, "TOO_FAR"); assert.ok(far.body.distance > 5000);
+    // ห่าง ~200 ม. แต่ GPS คลาดเคลื่อน 60 ม. -> ยังนับว่าอยู่ในระยะ 150 ม.
+    const ok = await post(`/me/assignments/${a.body.id}/check-in`, { lat: 13.7618, lng: 100.51, accuracy: 60 }, tc);
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    assert.ok(ok.body.check_in_distance >= 190 && ok.body.check_in_distance <= 210);
+    assert.ok(["ON_TIME", "LATE"].includes(ok.body.attendance));
+    assert.ok(ok.body.acknowledged_at, "เข้ากะแล้วนับว่ารับทราบด้วย");
+  }
+  assert.equal((await post(`/me/assignments/${a.body.id}/check-in`, { lat: 13.76, lng: 100.51 }, tc)).status, 409);
+
+  const list = await get(`/assignments?date=${cur.date}&shift=${cur.shift}`, T.admin);
+  const adm = list.body.find((x) => x.id === a.body.id);
+  assert.ok(["ON_TIME", "LATE"].includes(adm.attendance)); assert.equal(adm.check_in_photo, undefined);
+  assert.equal((await get(`/assignments/${a.body.id}/check-in-photo`, T.admin)).status, 404);
+
+  const dash = await get(`/dashboard?date=${cur.date}`, T.admin);
+  assert.equal(dash.body.attendance.perShift.length, 3);
+  assert.ok(dash.body.acknowledgements.every((x) => "attendance" in x));
+
+  const out = await post(`/me/assignments/${a.body.id}/check-out`, undefined, tc);
+  assert.equal(out.status, 200); assert.ok(out.body.check_out_at);
+  assert.equal((await post(`/me/assignments/${a.body.id}/check-out`, undefined, tc)).status, 409);
+
+  // ย้ายจุด = ต้องเข้ากะใหม่
+  const other = await post("/locations", { name: "จุดย้าย", lat: 13.7, lng: 100.4, need_morning: 2, need_afternoon: 2, need_night: 2 }, T.admin);
+  const mv = await patch(`/assignments/${a.body.id}`, { locationId: other.body.id }, T.admin);
+  assert.equal(mv.body.check_in_at, null);
+  await del(`/locations/${other.body.id}`, T.admin);
+
+  assert.deepEqual((await get("/me/team", tc)).body, { isLeader: false, slots: [] });
+  const team = await get("/me/team", T.thana);
+  assert.equal(team.body.isLeader, true);
+  assert.ok(Array.isArray(team.body.slots));
+
+  await del(`/users/${u.body.id}`, T.admin);
+});
+
 test("ไฟล์ใหญ่เกิน + ลบจุดทดสอบ", async () => {
   const big = await call("POST", "/me/incidents", { token: T.wichai, raw: JSON.stringify({ detail: "x", photo: "a".repeat(4_000_000) }) });
   assert.equal(big.status, 413);

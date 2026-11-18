@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS locations (
   need_morning   INT NOT NULL DEFAULT 1,
   need_afternoon INT NOT NULL DEFAULT 1,
   need_night     INT NOT NULL DEFAULT 1,
+  checkin_radius INT NOT NULL DEFAULT 200,   -- ระยะที่กดเข้ากะได้ (เมตร)
   created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -41,6 +42,12 @@ CREATE TABLE IF NOT EXISTS assignments (
   date            DATE NOT NULL,
   shift           ENUM('MORNING','AFTERNOON','NIGHT') NOT NULL,
   acknowledged_at DATETIME NULL,
+  check_in_at     DATETIME NULL,            -- เวลาเข้ากะจริง
+  check_in_lat    DECIMAL(10,7) NULL,
+  check_in_lng    DECIMAL(10,7) NULL,
+  check_in_distance INT NULL,               -- ห่างจากจุดเวรกี่เมตรตอนกดเข้ากะ
+  check_in_photo  MEDIUMTEXT NULL,
+  check_out_at    DATETIME NULL,
   created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   -- คนหนึ่งอยู่ได้จุดเดียวต่อกะ
   UNIQUE KEY uq_user_shift (user_id, date, shift),

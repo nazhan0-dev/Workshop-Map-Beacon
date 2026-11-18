@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Check, Clock, ChevronLeft, ChevronRight, ArrowRight, Users, MapPin, ClipboardCheck, BellRing,
-  Sun, Sunset, Moon, AlertTriangle, UserX, PartyPopper, Siren, CalendarOff,
+  Sun, Sunset, Moon, AlertTriangle, UserX, PartyPopper, Siren, CalendarOff, LogIn, Phone,
 } from "lucide-react";
 import Header from "../../components/layout/Header";
 import RankBadge from "../../components/RankBadge";
@@ -10,6 +10,8 @@ import IncidentRow from "../../components/incidents/IncidentRow";
 import IncidentModal from "../../components/incidents/IncidentModal";
 import { LeaveTypeChip } from "../../components/leaves/LeaveChips";
 import { shiftsText } from "../../lib/leaves";
+import AttendanceChip from "../../components/attendance/AttendanceChip";
+import { hhmm } from "../../lib/attendance";
 import DatePicker from "../../components/DatePicker";
 import { Avatar, StatusDot } from "../../components/ui";
 import { api, errMsg } from "../../lib/api";
@@ -259,6 +261,52 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex flex-col gap-3">
+              {/* การเข้ากะ: ใครมาแล้ว / สาย / ยังไม่มา */}
+              <Card icon={LogIn} title="การเข้ากะ" delay={0.25}
+                aside={data.attendance.attention.some((a) => a.attendance === "MISSING")
+                  ? <span className="font-semibold text-danger">ยังไม่มา {data.attendance.attention.filter((a) => a.attendance === "MISSING").length} คน</span> : null}>
+                <div className="flex flex-col gap-2.5 mb-1">
+                  {data.attendance.perShift.filter((p) => p.total > 0).map((p) => {
+                    const seg = [
+                      { n: p.onTime, cls: "bg-brand" }, { n: p.late, cls: "bg-warn" },
+                      { n: p.missing + p.absent, cls: "bg-danger" },
+                    ];
+                    return (
+                      <div key={p.shift} className="text-sm">
+                        <div className="flex items-baseline gap-2 mb-1">
+                          <span className="font-semibold w-14">กะ{SHIFT_INFO[p.shift].label}</span>
+                          <span className="text-xs text-mute flex-1">
+                            เข้าแล้ว {p.onTime + p.late}/{p.total}
+                            {p.late ? <span className="text-warn"> · สาย {p.late}</span> : null}
+                            {p.missing ? <span className="text-danger font-semibold"> · ยังไม่มา {p.missing}</span> : null}
+                            {p.absent ? <span className="text-danger"> · ขาด {p.absent}</span> : null}
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-track overflow-hidden flex">
+                          {seg.map((x, i) => x.n > 0 && <div key={i} className={`${x.cls} h-full`} style={{ width: `${(x.n / p.total) * 100}%` }} />)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {data.attendance.perShift.every((p) => p.total === 0) && <Empty icon={Check} text="วันนี้ยังไม่มีเวร" />}
+                </div>
+                {data.attendance.attention.slice(0, 6).map((a, i) => (
+                  <div key={a.id} style={{ animationDelay: `${0.3 + i * 0.04}s` }}
+                    className="row-in flex items-center gap-3 py-2.5 border-t border-line">
+                    <Avatar name={a.user_name} size={34} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5"><span className="font-semibold truncate">{a.user_name}</span><RankBadge rank={a.user_rank} quiet /></div>
+                      <div className="text-xs text-mute truncate">{a.location_name} · กะ{SHIFT_INFO[a.shift].label}{a.check_in_at ? ` · เข้า ${hhmm(a.check_in_at)} น.` : ""}</div>
+                    </div>
+                    <AttendanceChip a={a} />
+                    {a.attendance === "MISSING" && a.user_phone && (
+                      <a href={`tel:${a.user_phone}`} aria-label={`โทรหา ${a.user_name}`}
+                        className="w-9 h-9 rounded-xl bg-paper flex items-center justify-center text-brand hover:bg-brand-soft"><Phone size={15} /></a>
+                    )}
+                  </div>
+                ))}
+              </Card>
+
               {/* เหตุการณ์: เรื่องของวันนี้ + เรื่องค้างจากวันก่อน */}
               <Card icon={Siren} title="เหตุการณ์" delay={0.27}
                 aside={data.incidents.length ? <button onClick={() => navigate("/admin/incidents")} className="font-semibold text-ink hover:underline">ดูทั้งหมด</button> : null}>

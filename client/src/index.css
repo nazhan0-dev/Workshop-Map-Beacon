@@ -786,3 +786,12 @@
 @media (prefers-reduced-motion: reduce) {
   .inc-pulse, .pin-alert.u { animation: none; }
 }
+
+/* ---------- เข้ากะ ---------- */
+/* เลยเวลาเข้ากะแล้ว: ปุ่มเข้ากะส่งสัญญาณเบา ๆ */
+.checkin-nudge { animation: checkin-nudge 2.2s ease-in-out infinite; }
+@keyframes checkin-nudge {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(62 196 130 / 0); }
+  50% { box-shadow: 0 0 0 6px rgb(62 196 130 / 0.28); }
+}
+@media (prefers-reduced-motion: reduce) { .checkin-nudge { animation: none; } }

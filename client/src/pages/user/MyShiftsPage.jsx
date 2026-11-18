@@ -13,6 +13,9 @@ import ShiftCalendar from "../../components/ShiftCalendar";
 import { errMsg } from "../../lib/api";
 import { SHIFT_INFO, fmtShort, parseDate, shiftTiming, currentShift, today, addDays } from "../../lib/shifts";
 import RankBadge from "../../components/RankBadge";
+import CheckInBar from "../../components/attendance/CheckInBar";
+import LeaderTeamCard from "../../components/attendance/LeaderTeamCard";
+import AttendanceChip from "../../components/attendance/AttendanceChip";
 
 const SHIFT_ICON = { MORNING: Sun, AFTERNOON: Sunset, NIGHT: Moon };
 
@@ -247,6 +250,9 @@ export default function MyShiftsPage() {
                         </Link>
                       </div>
                     )}
+                    {/* เข้ากะ / ออกกะ */}
+                    <CheckInBar asg={hero} timing={timing} now={now} />
+
                     <Link to={`/me/reports?new=${hero.id}`}
                       className="group mt-2.5 lg:mt-auto h-10 rounded-xl bg-[#b3261e] text-white flex items-center justify-center gap-2 text-sm font-semibold hover:bg-[#9a1f18] active:scale-[0.99] transition">
                       <Siren size={15} className="transition-transform group-hover:scale-110" />รายงานเหตุการณ์
@@ -298,6 +304,9 @@ export default function MyShiftsPage() {
               </Card>
             )}
 
+            {/* หัวหน้า/รองหัวหน้า: ทีมในกะเข้ากะครบไหม */}
+            {user?.rank && user.rank !== "STAFF" && <LeaderTeamCard delay={0.1} />}
+
             {hero && (
               <Card title="อยู่กะเดียวกับคุณ" icon={Users} delay={0.12}
                 aside={<span className="text-xs text-mute">{hero.teammates.length ? `${hero.teammates.length} คน` : ""}</span>}>
@@ -306,7 +315,7 @@ export default function MyShiftsPage() {
                   <div key={t.id} style={{ animationDelay: `${0.2 + i * 0.05}s` }} className="row-in flex items-center gap-3 py-2 border-t border-line first:border-t-0">
                     <Avatar name={t.name} size={40} />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5"><span className="font-semibold truncate">{t.name}</span><RankBadge rank={t.rank} quiet /></div>
+                      <div className="flex items-center gap-1.5"><span className="font-semibold truncate">{t.name}</span><RankBadge rank={t.rank} quiet /><AttendanceChip a={t} quiet /></div>
                       {t.position && <div className="text-xs text-mute truncate">{t.position}</div>}
                     </div>
                     {t.phone && (

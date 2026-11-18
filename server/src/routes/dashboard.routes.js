@@ -5,6 +5,7 @@ import { HttpError } from "../middlewares/error.js";
 import { SHIFTS, SHIFT_INFO, isDateStr } from "../utils/shifts.js";
 import { INCIDENT_SQL, fixRows } from "../utils/incidents.js";
 import { LEAVE_SQL, fixLeave } from "../utils/leaves.js";
+import { withAttendance } from "../utils/attendance.js";
 
 const router = Router();
 
@@ -17,7 +18,8 @@ router.get("/", async (req, res) => {
     query("SELECT COUNT(*) AS staff FROM users WHERE role = 'USER'"),
     query("SELECT * FROM locations ORDER BY id"),
     query(
-      `SELECT a.id, a.user_id, a.location_id, a.shift, a.acknowledged_at, u.name AS user_name, l.name AS location_name
+      `SELECT a.id, a.user_id, a.location_id, a.date, a.shift, a.acknowledged_at, a.check_in_at, a.check_out_at,
+              u.name AS user_name, u.phone AS user_phone, u.\`rank\` AS user_rank, l.name AS location_name
        FROM assignments a JOIN users u ON u.id = a.user_id JOIN locations l ON l.id = a.location_id
        WHERE a.date = ? ORDER BY FIELD(a.shift,'MORNING','AFTERNOON','NIGHT'), u.name`,
       [date]
@@ -39,6 +41,19 @@ router.get("/", async (req, res) => {
     query(`${LEAVE_SQL} WHERE lv.status = 'APPROVED' AND ? BETWEEN lv.start_date AND lv.end_date ORDER BY u.name`, [date]),
     query("SELECT COUNT(*) AS pendingLeaves FROM leaves WHERE status = 'PENDING'"),
   ]);
+
+  const att = withAttendance(assignments);
+  const attendance = {
+    perShift: SHIFTS.map((shift) => {
+      const list = att.filter((a) => a.shift === shift);
+      const n = (k) => list.filter((a) => a.attendance === k).length;
+      return { shift, total: list.length, onTime: n("ON_TIME"), late: n("LATE"), waiting: n("WAITING") + n("UPCOMING"), missing: n("MISSING"), absent: n("ABSENT") };
+    }),
+    // คนที่ต้องตามตอนนี้: ยังไม่มา / สาย (เรียงจากยังไม่มาก่อน)
+    attention: att
+      .filter((a) => a.attendance === "MISSING" || a.attendance === "LATE")
+      .sort((x, y) => (x.attendance === "MISSING" ? 0 : 1) - (y.attendance === "MISSING" ? 0 : 1) || y.late_minutes - x.late_minutes),
+  };
 
   const count = {};
   assignments.forEach((a) => { const k = `${a.location_id}|${a.shift}`; count[k] = (count[k] || 0) + 1; });
@@ -70,7 +85,8 @@ router.get("/", async (req, res) => {
     perShift,
     understaffed,
     freeStaff,
-    acknowledgements: assignments,
+    acknowledgements: att,
+    attendance,
     incidents: fixRows(incidents),
     leaves: leaves.map(fixLeave),
     pendingLeaves: Number(pendingLeaves),

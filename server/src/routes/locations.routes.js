@@ -19,10 +19,12 @@ function pickBody(b = {}) {
     if (!Number.isInteger(n) || n < 0 || n > 50) throw new HttpError(400, "จำนวนคนต่อกะต้องเป็น 0–50");
     return n;
   };
+  const radius = Number(b.checkin_radius ?? 200);
+  if (!Number.isInteger(radius) || radius < 30 || radius > 5000) throw new HttpError(400, "ระยะเข้ากะต้องเป็น 30–5000 เมตร");
   return [
     name, lat, lng,
     b.duties?.trim() || null, b.cautions?.trim() || null, b.contact_phone?.trim() || null,
-    need(b.need_morning), need(b.need_afternoon), need(b.need_night),
+    need(b.need_morning), need(b.need_afternoon), need(b.need_night), radius,
   ];
 }
 
@@ -33,8 +35,8 @@ router.get("/", async (req, res) => {
 
 router.post("/", adminOnly, async (req, res) => {
   const r = await query(
-    `INSERT INTO locations (name, lat, lng, duties, cautions, contact_phone, need_morning, need_afternoon, need_night)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO locations (name, lat, lng, duties, cautions, contact_phone, need_morning, need_afternoon, need_night, checkin_radius)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     pickBody(req.body)
   );
   const [loc] = await query("SELECT * FROM locations WHERE id = ?", [r.insertId]);
@@ -44,7 +46,7 @@ router.post("/", adminOnly, async (req, res) => {
 router.put("/:id", adminOnly, async (req, res) => {
   const r = await query(
     `UPDATE locations SET name=?, lat=?, lng=?, duties=?, cautions=?, contact_phone=?,
-     need_morning=?, need_afternoon=?, need_night=? WHERE id=?`,
+     need_morning=?, need_afternoon=?, need_night=?, checkin_radius=? WHERE id=?`,
     [...pickBody(req.body), req.params.id]
   );
   if (!r.affectedRows) throw new HttpError(404, "ไม่พบจุดเวร");
