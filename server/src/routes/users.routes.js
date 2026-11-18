@@ -3,21 +3,31 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { query } from "../config/db.js";
 import { HttpError } from "../middlewares/error.js";
+import { text, phone } from "../utils/validate.js";
 
 const router = Router();
 const COLS = "id, name, username, role, `rank`, position, phone, created_at";
 const RANKS = ["HEAD", "DEPUTY", "STAFF"];
 
 function pickBody(body = {}) {
-  const name = (body.name || "").trim();
-  const username = (body.username || "").trim();
+  const name = text(body.name, { label: "ชื่อพนักงาน", max: 100, required: true });
+  const username = String(body.username || "").trim().toLowerCase();
   const role = body.role === "ADMIN" ? "ADMIN" : "USER";
   const rank = RANKS.includes(body.rank) ? body.rank : "STAFF";
-  if (!name) throw new HttpError(400, "กรอกชื่อพนักงาน");
-  if (!/^[a-zA-Z0-9_.]{3,50}$/.test(username)) {
+  if (!/^[a-z0-9_.]{3,50}$/.test(username)) {
     throw new HttpError(400, "ชื่อผู้ใช้ต้องเป็นภาษาอังกฤษหรือตัวเลข 3–50 ตัว");
   }
-  return { name, username, role, rank, position: body.position?.trim() || null, phone: body.phone?.trim() || null };
+  return {
+    name, username, role, rank,
+    position: text(body.position, { label: "หน้าที่", max: 100 }),
+    phone: phone(body.phone),
+  };
+}
+
+function checkPassword(p) {
+  if (typeof p !== "string" || p.length < 6) throw new HttpError(400, "รหัสผ่านต้องมีอย่างน้อย 6 ตัว");
+  if (p.length > 72) throw new HttpError(400, "รหัสผ่านยาวได้ไม่เกิน 72 ตัว");
+  return p;
 }
 
 // GET /api/users
@@ -25,11 +35,10 @@ router.get("/", async (req, res) => {
   res.json(await query(`SELECT ${COLS} FROM users ORDER BY role, FIELD(\`rank\`, 'HEAD', 'DEPUTY', 'STAFF'), name`));
 });
 
-// POST /api/users  { name, username, password, role, position, phone }
+// POST /api/users  { name, username, password, role, rank, position, phone }
 router.post("/", async (req, res) => {
   const data = pickBody(req.body);
-  const password = req.body.password || "";
-  if (password.length < 6) throw new HttpError(400, "รหัสผ่านต้องมีอย่างน้อย 6 ตัว");
+  const password = checkPassword(req.body.password);
   const r = await query(
     "INSERT INTO users (name, username, password_hash, role, `rank`, position, phone) VALUES (?, ?, ?, ?, ?, ?, ?)",
     [data.name, data.username, await bcrypt.hash(password, 10), data.role, data.rank, data.position, data.phone]
@@ -61,11 +70,13 @@ router.delete("/:id", async (req, res) => {
   res.json({ message: "ลบพนักงานแล้ว" });
 });
 
-// POST /api/users/:id/reset-password  { password }
+// POST /api/users/:id/reset-password  { password }  (คนนั้นถูกออกจากระบบทุกอุปกรณ์)
 router.post("/:id/reset-password", async (req, res) => {
-  const password = req.body?.password || "";
-  if (password.length < 6) throw new HttpError(400, "รหัสผ่านต้องมีอย่างน้อย 6 ตัว");
-  const r = await query("UPDATE users SET password_hash = ? WHERE id = ?", [await bcrypt.hash(password, 10), req.params.id]);
+  const password = checkPassword(req.body?.password);
+  const r = await query(
+    "UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?",
+    [await bcrypt.hash(password, 10), req.params.id]
+  );
   if (!r.affectedRows) throw new HttpError(404, "ไม่พบพนักงาน");
   res.json({ message: "รีเซ็ตรหัสผ่านแล้ว" });
 });

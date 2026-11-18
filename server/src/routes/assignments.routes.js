@@ -1,6 +1,6 @@
 // จัดเวร (เฉพาะ ADMIN)
 import { Router } from "express";
-import { query } from "../config/db.js";
+import { query, transaction } from "../config/db.js";
 import { HttpError } from "../middlewares/error.js";
 import { SHIFT_INFO, isShift, isDateStr, adjacentShifts, addDays } from "../utils/shifts.js";
 import { approvedLeaveOn, LEAVE_LABEL } from "../utils/leaves.js";
@@ -16,16 +16,16 @@ const LIST_SQL = `
   JOIN users u ON u.id = a.user_id
   JOIN locations l ON l.id = a.location_id`;
 
-async function getLocation(id) {
-  const [loc] = await query("SELECT * FROM locations WHERE id = ?", [id]);
+async function getLocation(id, q = query, lock = false) {
+  const [loc] = await q(`SELECT * FROM locations WHERE id = ?${lock ? " FOR UPDATE" : ""}`, [id]);
   if (!loc) throw new HttpError(404, "ไม่พบจุดเวร");
   return loc;
 }
 
-// เช็กว่าจุดนี้ในกะนี้ยังรับคนได้ไหม
-async function assertCapacity(loc, date, shift) {
+// เช็กว่าจุดนี้ในกะนี้ยังรับคนได้ไหม (เรียกในทรานแซกชันหลังล็อกแถวของจุดแล้ว กันจัดพร้อมกันจนเกินจำนวน)
+async function assertCapacity(q, loc, date, shift) {
   const need = loc[SHIFT_INFO[shift].needCol];
-  const [{ n }] = await query(
+  const [{ n }] = await q(
     "SELECT COUNT(*) AS n FROM assignments WHERE location_id = ? AND date = ? AND shift = ?",
     [loc.id, date, shift]
   );
@@ -58,9 +58,11 @@ router.post("/", async (req, res) => {
   const { userId, locationId, date, shift, force } = req.body || {};
   if (!isDateStr(date) || !isShift(shift)) throw new HttpError(400, "วันที่หรือกะไม่ถูกต้อง");
 
-  const [user] = await query("SELECT id, name FROM users WHERE id = ?", [userId]);
+  const [user] = await query("SELECT id, name, role FROM users WHERE id = ?", [userId]);
   if (!user) throw new HttpError(404, "ไม่พบพนักงาน");
-  const loc = await getLocation(locationId);
+  if (user.role !== "USER") throw new HttpError(400, "จัดเวรให้ผู้ดูแลระบบไม่ได้");
+  // เช็กจุดเต็มก่อนรอบหนึ่งเพื่อตอบเร็ว (เช็กจริงอีกครั้งในทรานแซกชันตอนบันทึก)
+  await assertCapacity(query, await getLocation(locationId), date, shift);
 
   const [existing] = await query(
     `${LIST_SQL} WHERE a.user_id = ? AND a.date = ? AND a.shift = ?`, [userId, date, shift]
@@ -70,8 +72,6 @@ router.post("/", async (req, res) => {
       code: "ALREADY_ASSIGNED", assignmentId: existing.id,
     });
   }
-
-  await assertCapacity(loc, date, shift);
 
   const leave = await approvedLeaveOn(user.id, date, shift);
   if (leave) throw new HttpError(409, `${user.name} ${LEAVE_LABEL[leave.type]}กะนี้ (อนุมัติแล้ว)`, { code: "ON_LEAVE" });
@@ -90,11 +90,13 @@ router.post("/", async (req, res) => {
     }
   }
 
-  const r = await query(
-    "INSERT INTO assignments (user_id, location_id, date, shift) VALUES (?, ?, ?, ?)",
-    [userId, loc.id, date, shift]
-  );
-  const [row] = await query(`${LIST_SQL} WHERE a.id = ?`, [r.insertId]);
+  const id = await transaction(async (q) => {
+    const loc = await getLocation(locationId, q, true);
+    await assertCapacity(q, loc, date, shift);
+    const r = await q("INSERT INTO assignments (user_id, location_id, date, shift) VALUES (?, ?, ?, ?)", [user.id, loc.id, date, shift]);
+    return r.insertId;
+  });
+  const [row] = await query(`${LIST_SQL} WHERE a.id = ?`, [id]);
   res.status(201).json(row);
 });
 
@@ -102,16 +104,18 @@ router.post("/", async (req, res) => {
 router.patch("/:id", async (req, res) => {
   const [a] = await query("SELECT * FROM assignments WHERE id = ?", [req.params.id]);
   if (!a) throw new HttpError(404, "ไม่พบเวรนี้");
-  const loc = await getLocation(req.body?.locationId);
-  if (loc.id === a.location_id) return res.json(a);
-  await assertCapacity(loc, a.date, a.shift);
-  // ย้ายจุดถือว่าเป็นเวรใหม่ ต้องรับทราบและเข้ากะใหม่ที่จุดใหม่
-  await query(
-    `UPDATE assignments SET location_id = ?, acknowledged_at = NULL,
-       check_in_at = NULL, check_in_lat = NULL, check_in_lng = NULL, check_in_distance = NULL, check_in_photo = NULL, check_out_at = NULL
-     WHERE id = ?`,
-    [loc.id, a.id]
-  );
+  if (Number(req.body?.locationId) === a.location_id) return res.json(a);
+  await transaction(async (q) => {
+    const loc = await getLocation(req.body?.locationId, q, true);
+    await assertCapacity(q, loc, a.date, a.shift);
+    // ย้ายจุดถือว่าเป็นเวรใหม่ ต้องรับทราบและเข้ากะใหม่ที่จุดใหม่
+    await q(
+      `UPDATE assignments SET location_id = ?, acknowledged_at = NULL,
+         check_in_at = NULL, check_in_lat = NULL, check_in_lng = NULL, check_in_distance = NULL, check_in_photo = NULL, check_out_at = NULL
+       WHERE id = ?`,
+      [loc.id, a.id]
+    );
+  });
   const [row] = await query(`${LIST_SQL} WHERE a.id = ?`, [a.id]);
   res.json(row);
 });

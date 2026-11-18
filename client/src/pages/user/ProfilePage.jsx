@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, KeyRound, Eye, EyeOff, Check, X, ChevronDown, ChevronRight, Phone, Briefcase, ShieldCheck, CalendarOff } from "lucide-react";
+import { LogOut, KeyRound, Eye, EyeOff, Check, X, ChevronDown, ChevronRight, Phone, Briefcase, ShieldCheck, CalendarOff, MonitorSmartphone } from "lucide-react";
 import useAuthStore from "../../store/useAuthStore";
 import { Button, inputCls } from "../../components/ui";
 import { api, errMsg } from "../../lib/api";
@@ -45,7 +45,7 @@ function PwInput({ id, label, value, onChange, autoComplete, children }) {
 }
 
 export default function ProfilePage() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, logoutAll } = useAuthStore();
   const { items, load } = useMyShifts();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -83,6 +83,10 @@ export default function ProfilePage() {
     user.phone && { icon: Phone, label: "เบอร์โทร", value: <a href={`tel:${user.phone}`} className="hover:underline tabular-nums">{user.phone}</a> },
   ].filter(Boolean);
   const onLogout = () => { logout(); useMyShifts.setState({ items: null }); navigate("/login"); };
+  const onLogoutAll = async () => {
+    try { await logoutAll(); useMyShifts.setState({ items: null }); navigate("/login"); }
+    catch (e) { toast(errMsg(e), "error"); }
+  };
 
   const row = "flex items-center gap-3 px-4 py-3.5";
   const icon = "w-9 h-9 rounded-xl flex items-center justify-center shrink-0";
@@ -194,6 +198,13 @@ export default function ProfilePage() {
           <button type="button" onClick={onLogout} className={`${row} group w-full text-left hover:bg-danger-soft/60 transition-colors`}>
             <span className={`${icon} bg-danger-soft text-danger`}><LogOut size={16} className="transition-transform group-hover:translate-x-0.5" /></span>
             <span className="flex-1 text-sm font-semibold text-danger">ออกจากระบบ</span>
+          </button>
+          <button type="button" onClick={onLogoutAll} className={`${row} group w-full text-left border-t border-line hover:bg-paper/60 transition-colors`}>
+            <span className={`${icon} bg-paper text-mute`}><MonitorSmartphone size={16} /></span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-semibold">ออกจากระบบทุกอุปกรณ์</span>
+              <span className="block text-xs text-mute">ใช้เมื่อทำมือถือหายหรือเคยล็อกอินเครื่องคนอื่น</span>
+            </span>
           </button>
         </div>
       </section>

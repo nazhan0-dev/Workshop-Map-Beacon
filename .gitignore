@@ -1,1 +1,9 @@
+# ทั้งโปรเจกต์
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+
+# ตั้งค่าของ Claude Code ในเครื่อง
 .claude/

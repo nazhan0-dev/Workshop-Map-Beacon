@@ -2,31 +2,20 @@ import axios from "axios";
 
 // ตั้งค่าใน client/.env  ->  VITE_API_URL=http://localhost:5000/api
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-const TOKEN_KEY = "wm_token";
 
-export const tokenStore = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (t) => localStorage.setItem(TOKEN_KEY, t),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
-};
+// token อยู่ใน cookie แบบ httpOnly ที่ server ตั้งให้ JavaScript อ่านไม่ได้ (กันขโมยผ่าน XSS)
+// withCredentials = ให้เบราว์เซอร์แนบ cookie ไปกับทุกคำขอ
+const client = axios.create({ baseURL: API_URL, withCredentials: true, timeout: 20000 });
 
-const client = axios.create({ baseURL: API_URL });
+// เซสชันหมดอายุ/ถูกยกเลิก -> แจ้ง store ให้ล้างผู้ใช้ (หน้าเว็บจะพาไปหน้าเข้าสู่ระบบเอง)
+let onUnauthorized = () => {};
+export const setUnauthorizedHandler = (fn) => { onUnauthorized = fn; };
 
-// แนบ token ทุกคำขอ
-client.interceptors.request.use((config) => {
-  const t = tokenStore.get();
-  if (t) config.headers.Authorization = `Bearer ${t}`;
-  return config;
-});
-
-// token หมดอายุ -> กลับไปหน้าเข้าสู่ระบบ
 client.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && !err.config.url.includes("/auth/login")) {
-      tokenStore.clear();
-      if (location.pathname !== "/login") location.href = "/login";
-    }
+    const url = err.config?.url || "";
+    if (err.response?.status === 401 && !url.includes("/auth/login") && !url.includes("/auth/me")) onUnauthorized();
     return Promise.reject(err);
   }
 );
@@ -40,7 +29,9 @@ export const api = {
 };
 
 // ข้อความ error จาก server (หรือข้อความสำรอง)
+// เซสชันหมด (401) คืนค่าว่าง: หน้าเข้าสู่ระบบบอกเหตุผลให้แล้ว ไม่ต้องเด้ง toast ซ้ำ
 export function errMsg(err, fallback = "ทำรายการไม่สำเร็จ ลองใหม่อีกครั้ง") {
   if (!err.response) return "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจว่ารัน server อยู่";
+  if (err.response.status === 401 && !err.config?.url?.includes("/auth/")) return "";
   return err.response.data?.message || fallback;
 }

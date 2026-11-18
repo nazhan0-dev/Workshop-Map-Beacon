@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
   `rank`        ENUM('HEAD','DEPUTY','STAFF') NOT NULL DEFAULT 'STAFF',
   position      VARCHAR(100) NULL,
   phone         VARCHAR(20)  NULL,
+  token_version INT NOT NULL DEFAULT 0,      -- เพิ่มเมื่อเปลี่ยนรหัส/ออกจากทุกอุปกรณ์ ทำให้ token เก่าใช้ไม่ได้
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

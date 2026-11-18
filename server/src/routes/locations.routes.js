@@ -3,14 +3,15 @@ import { Router } from "express";
 import { query } from "../config/db.js";
 import { adminOnly } from "../middlewares/auth.js";
 import { HttpError } from "../middlewares/error.js";
+import { text, phone } from "../utils/validate.js";
 
 const router = Router();
 
 function pickBody(b = {}) {
-  const name = (b.name || "").trim();
-  const lat = Number(b.lat);
-  const lng = Number(b.lng);
-  if (!name) throw new HttpError(400, "กรอกชื่อจุด");
+  const name = text(b.name, { label: "ชื่อจุด", max: 100, required: true });
+  const num = (v) => (v === "" || v == null || typeof v === "boolean" ? NaN : Number(v));
+  const lat = num(b.lat);
+  const lng = num(b.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
     throw new HttpError(400, "พิกัดไม่ถูกต้อง");
   }
@@ -23,7 +24,8 @@ function pickBody(b = {}) {
   if (!Number.isInteger(radius) || radius < 30 || radius > 5000) throw new HttpError(400, "ระยะเข้ากะต้องเป็น 30–5000 เมตร");
   return [
     name, lat, lng,
-    b.duties?.trim() || null, b.cautions?.trim() || null, b.contact_phone?.trim() || null,
+    text(b.duties, { label: "หน้าที่", max: 2000 }), text(b.cautions, { label: "ข้อควรระวัง", max: 2000 }),
+    phone(b.contact_phone, "เบอร์หัวหน้าจุด"),
     need(b.need_morning), need(b.need_afternoon), need(b.need_night), radius,
   ];
 }

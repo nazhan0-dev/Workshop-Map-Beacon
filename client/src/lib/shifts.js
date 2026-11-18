@@ -75,8 +75,13 @@ export function shiftTiming(a, now = new Date()) {
   return { ended: false, text: mins < 60 ? `เริ่มในอีก ${mins} นาที` : `เริ่มในอีก ${Math.floor(mins / 60)} ชม. ${mins % 60} นาที` };
 }
 
-// เวรที่ควรแสดงเด่น: เวรวันนี้ที่ยังไม่จบ (ถ้าจบหมดแล้วใช้เวรแรกของวันนี้)
+// เวรที่ควรแสดงเด่น: เวรที่ยังไม่จบ เรียงตามเวลา (รวมกะดึกเมื่อคืนที่ยังไม่ถึง 06:00)
+// ถ้าเวรวันนี้จบหมดแล้ว ใช้เวรแรกของวันนี้
+const ORDER = { MORNING: 0, AFTERNOON: 1, NIGHT: 2 };
 export function currentShift(items, day = today()) {
-  const list = (items || []).filter((i) => i.date === day);
-  return list.find((a) => !shiftTiming(a).ended) || list[0];
+  const y = addDays(day, -1);
+  const list = (items || [])
+    .filter((i) => i.date === day || (i.date === y && i.shift === "NIGHT"))
+    .sort((a, b) => a.date.localeCompare(b.date) || ORDER[a.shift] - ORDER[b.shift]);
+  return list.find((a) => !shiftTiming(a).ended) || list.find((a) => a.date === day);
 }

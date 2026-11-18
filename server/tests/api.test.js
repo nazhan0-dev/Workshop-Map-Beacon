@@ -12,25 +12,43 @@ const day = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offs
 const TODAY = day(0), TMR = day(1);
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8+/r/fwAJ0gPzxj5iYwAAAABJRU5ErkJggg==";
 
-async function call(method, path, { token, body, raw } = {}) {
+const ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+
+// เรียก API แบบเบราว์เซอร์: แนบ cookie ของผู้ใช้ และ Origin ของหน้าเว็บ
+// opts.token = cookie "beacon_token=..." (ได้จาก login) | opts.origin = null คือไม่ส่ง Origin
+async function call(method, path, { token, body, raw, origin = ORIGIN, headers = {} } = {}) {
   const res = await fetch(API + path, {
     method,
-    headers: { ...(body !== undefined || raw ? { "content-type": "application/json" } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    headers: {
+      ...(body !== undefined || raw ? { "content-type": "application/json" } : {}),
+      ...(token ? { cookie: token } : {}),
+      ...(origin ? { origin } : {}),
+      ...headers,
+    },
     body: raw ?? (body !== undefined ? JSON.stringify(body) : undefined),
   });
   const text = await res.text();
   let data; try { data = JSON.parse(text); } catch { data = text; }
-  return { status: res.status, body: data };
+  return { status: res.status, body: data, headers: res.headers };
 }
 const get = (p, token) => call("GET", p, { token });
 const post = (p, body, token) => call("POST", p, { body, token });
 const put = (p, body, token) => call("PUT", p, { body, token });
 const patch = (p, body, token) => call("PATCH", p, { body, token });
 const del = (p, token) => call("DELETE", p, { token });
+
+// ดึง cookie ที่ server ตั้งให้ ("beacon_token=...") จาก Set-Cookie
+const setCookies = (r) => r.headers.getSetCookie?.() || [];
+function cookieFrom(r) {
+  const c = setCookies(r).find((x) => x.startsWith("beacon_token="));
+  return c ? c.split(";")[0] : null;
+}
 async function login(username, password = "123456") {
   const r = await post("/auth/login", { username, password });
   assert.equal(r.status, 200, `login ${username}: ${JSON.stringify(r.body)}`);
-  return r.body.token;
+  const c = cookieFrom(r);
+  assert.ok(c, "ต้องได้ cookie กลับมา");
+  return c;
 }
 
 // ผู้ใช้ตัวอย่าง (id ตามลำดับใน seed)
@@ -39,7 +57,7 @@ const T = {};
 const S = {}; // ค่าที่ส่งต่อระหว่างเทสต์
 
 test("health + route ที่ไม่มีจริง", async () => {
-  assert.deepEqual((await get("/health")).body, { ok: true });
+  assert.deepEqual((await get("/health")).body, { ok: true, db: true });
   assert.equal((await get("/nope")).status, 404);
 });
 
@@ -51,18 +69,29 @@ test("auth: login / me / เปลี่ยนรหัสผ่าน", async (
   const lr = await post("/auth/login", { username: "somchai", password: "123456" });
   assert.equal(lr.body.user.rank, "HEAD");
   assert.equal(lr.body.user.password_hash, undefined, "ต้องไม่ส่ง hash กลับ");
+  assert.equal(lr.body.user.token_version, undefined);
+  assert.equal(lr.body.token, undefined, "token อยู่ใน cookie เท่านั้น ไม่ส่งใน body");
+  assert.equal((await post("/auth/login", { username: "SOMCHAI", password: "123456" })).status, 200, "ชื่อผู้ใช้ไม่สนตัวพิมพ์เล็กใหญ่");
 
   assert.equal((await get("/auth/me")).status, 401);
-  assert.equal((await get("/auth/me", "not-a-token")).status, 401);
+  assert.equal((await get("/auth/me", "beacon_token=not-a-token")).status, 401);
   const me = await get("/auth/me", T.somying);
   assert.equal(me.status, 200);
   assert.equal(me.body.rank, "DEPUTY");
 
   assert.equal((await put("/auth/password", { currentPassword: "123456", newPassword: "123" }, T.suda)).status, 400);
   assert.equal((await put("/auth/password", { currentPassword: "ผิด", newPassword: "abcdef" }, T.suda)).status, 400);
-  assert.equal((await put("/auth/password", { currentPassword: "123456", newPassword: "abcdef" }, T.suda)).status, 200);
+  const old = T.suda;
+  const ch = await put("/auth/password", { currentPassword: "123456", newPassword: "abcdef" }, T.suda);
+  assert.equal(ch.status, 200);
+  T.suda = cookieFrom(ch);
+  assert.ok(T.suda, "เครื่องที่เปลี่ยนรหัสต้องได้ cookie ใหม่");
+  assert.equal((await get("/auth/me", old)).status, 401, "cookie เก่าต้องใช้ไม่ได้หลังเปลี่ยนรหัส");
+  assert.equal((await get("/auth/me", T.suda)).status, 200);
   await login("suda", "abcdef");
-  assert.equal((await put("/auth/password", { currentPassword: "abcdef", newPassword: "123456" }, T.suda)).status, 200);
+  const back = await put("/auth/password", { currentPassword: "abcdef", newPassword: "123456" }, T.suda);
+  assert.equal(back.status, 200);
+  T.suda = cookieFrom(back);
 });
 
 test("สิทธิ์: รปภ. เรียก API ของ admin ไม่ได้", async () => {
@@ -398,6 +427,145 @@ test("check-in: เข้ากะ / ออกกะ / ระยะ / เวล�
   assert.ok(Array.isArray(team.body.slots));
 
   await del(`/users/${u.body.id}`, T.admin);
+});
+
+test("security: cookie / ยกเลิก token / CSRF / CORS / header", async () => {
+  // cookie ที่ได้ต้องอ่านจาก JavaScript ไม่ได้ และส่งเฉพาะคำขอ /api
+  const r = await post("/auth/login", { username: "prayut", password: "123456" });
+  const raw = setCookies(r).find((x) => x.startsWith("beacon_token="));
+  assert.match(raw, /HttpOnly/i); assert.match(raw, /SameSite=Lax/i); assert.match(raw, /Path=\/api/i);
+  assert.match(raw, /Max-Age=\d+/i);
+  const cookie = raw.split(";")[0];
+  const jwtStr = cookie.slice("beacon_token=".length);
+
+  // ใช้ token แบบ Bearer ได้ด้วย (สำหรับเครื่องมือ/แอปอื่น)
+  assert.equal((await call("GET", "/auth/me", { headers: { authorization: `Bearer ${jwtStr}` } })).status, 200);
+
+  // token ถูกแก้ / เซ็นด้วยกุญแจอื่น / alg none -> ใช้ไม่ได้ และ server สั่งลบ cookie
+  const [h, p, sig] = jwtStr.split(".");
+  const forgedPayload = Buffer.from(JSON.stringify({ id: ID.admin, tv: 0, exp: 9999999999 })).toString("base64url");
+  const bad = await get("/auth/me", `beacon_token=${h}.${forgedPayload}.${sig}`);
+  assert.equal(bad.status, 401);
+  assert.ok(setCookies(bad).some((c) => /beacon_token=;/.test(c)), "ต้องสั่งลบ cookie ที่ใช้ไม่ได้");
+  const none = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
+  assert.equal((await get("/auth/me", `beacon_token=${none}.${forgedPayload}.`)).status, 401);
+  assert.equal((await get("/users", `beacon_token=${h}.${forgedPayload}.${sig}`)).status, 401, "ปลอมเป็น admin ไม่ได้");
+
+  // logout: ลบ cookie
+  const out = await call("POST", "/auth/logout", { token: cookie });
+  assert.equal(out.status, 200);
+  assert.ok(setCookies(out).some((c) => /beacon_token=;/.test(c) && /Expires=Thu, 01 Jan 1970/i.test(c)));
+
+  // ออกจากระบบทุกอุปกรณ์: cookie อื่นของคนนี้ใช้ไม่ได้ทันที
+  const phone = await login("prayut"), pc = await login("prayut");
+  assert.equal((await post("/auth/logout-all", undefined, phone)).status, 200);
+  assert.equal((await get("/auth/me", pc)).status, 401);
+  T.prayut = await login("prayut");
+
+  // admin รีเซ็ตรหัส -> คนนั้นถูกออกจากระบบ
+  const u = await post("/users", { name: "ชั่วคราว ทดสอบ", username: "temp1", password: "123456" }, T.admin);
+  const tc = await login("temp1");
+  await post(`/users/${u.body.id}/reset-password`, { password: "654321" }, T.admin);
+  assert.equal((await get("/auth/me", tc)).status, 401, "รีเซ็ตรหัสแล้ว cookie เก่าต้องใช้ไม่ได้");
+  // ลบบัญชี -> cookie ใช้ไม่ได้ทันที
+  const tc2 = await login("temp1", "654321");
+  await del(`/users/${u.body.id}`, T.admin);
+  assert.equal((await get("/me/assignments", tc2)).status, 401, "บัญชีถูกลบแล้วต้องใช้ต่อไม่ได้");
+
+  // ลดสิทธิ์ admin คนอื่น -> มีผลทันที ไม่ต้องรอ token หมดอายุ
+  const a2 = await post("/users", { name: "แอดมิน สอง", username: "admin2", password: "123456", role: "ADMIN" }, T.admin);
+  const ta2 = await login("admin2");
+  assert.equal((await get("/users", ta2)).status, 200);
+  await put(`/users/${a2.body.id}`, { name: "แอดมิน สอง", username: "admin2", role: "USER" }, T.admin);
+  assert.equal((await get("/users", ta2)).status, 403);
+  await del(`/users/${a2.body.id}`, T.admin);
+
+  // CSRF: คำขอที่ใช้ cookie จากเว็บอื่นถูกปฏิเสธ
+  const evil = await call("POST", "/locations", { token: T.admin, body: { name: "x", lat: 1, lng: 1 }, origin: "https://evil.example" });
+  assert.equal(evil.status, 403); assert.equal(evil.body.code, "BAD_ORIGIN");
+  assert.equal((await call("POST", "/auth/login", { body: { username: "admin", password: "admin1234" }, origin: "https://evil.example" })).status, 403);
+  assert.equal((await call("DELETE", "/users/9999", { token: T.admin, headers: { referer: "https://evil.example/page" }, origin: null })).status, 403, "เช็กจาก Referer ด้วย");
+  // ไม่มี Origin (curl/Postman) หรือใช้ Bearer -> ผ่านด่าน CSRF
+  assert.equal((await call("DELETE", "/users/9999", { token: T.admin, origin: null })).status, 404);
+  const tA = T.admin.slice("beacon_token=".length);
+  assert.equal((await call("DELETE", "/users/9999", { headers: { authorization: `Bearer ${tA}` }, origin: "https://evil.example" })).status, 404);
+  // GET จากเว็บอื่นไม่ถูกบล็อกที่ server แต่เบราว์เซอร์อ่านผลไม่ได้เพราะ CORS
+  const corsOk = await call("OPTIONS", "/users", { headers: { "access-control-request-method": "DELETE" } });
+  assert.equal(corsOk.headers.get("access-control-allow-origin"), ORIGIN);
+  assert.equal(corsOk.headers.get("access-control-allow-credentials"), "true");
+  const corsBad = await call("OPTIONS", "/users", { origin: "https://evil.example", headers: { "access-control-request-method": "DELETE" } });
+  assert.equal(corsBad.headers.get("access-control-allow-origin"), null);
+
+  // header ความปลอดภัย
+  const hh = (await get("/health")).headers;
+  assert.equal(hh.get("x-powered-by"), null);
+  assert.equal(hh.get("x-content-type-options"), "nosniff");
+  assert.equal(hh.get("x-frame-options"), "DENY");
+  assert.equal(hh.get("cache-control"), "no-store");
+});
+
+test("security: เดารหัสผ่าน / injection / ข้อมูลผิดรูป", async () => {
+  // ผิด 5 ครั้ง -> ครั้งที่ 6 ถูกพัก (แม้ใส่รหัสถูก) ส่วนคนอื่นไม่โดน (ใช้ชื่อใหม่ทุกรอบ เพราะตัวนับอยู่ในหน่วยความจำของ server)
+  const victim = `rl${Date.now() % 1e9}`;
+  const vu = await post("/users", { name: "ทดสอบ จำกัด", username: victim, password: "123456" }, T.admin);
+  for (let i = 0; i < 5; i++) assert.equal((await post("/auth/login", { username: victim, password: "wrong" })).status, 401);
+  const blocked = await post("/auth/login", { username: victim, password: "123456" });
+  assert.equal(blocked.status, 429); assert.equal(blocked.body.code, "TOO_MANY_ATTEMPTS");
+  assert.ok(Number(blocked.headers.get("retry-after")) > 0);
+  assert.equal((await post("/auth/login", { username: "thana", password: "123456" })).status, 200);
+  await del(`/users/${vu.body.id}`, T.admin);
+
+  // body ไม่ใช่ JSON / ชนิดข้อมูลผิด
+  assert.equal((await call("POST", "/auth/login", { raw: "{bad json" })).status, 400);
+  assert.equal((await post("/auth/login", { username: ["admin"], password: { $ne: 1 } })).status, 400);
+
+  // SQL injection: ใช้ placeholder ทุกที่ จึงไม่มีผล
+  assert.equal((await post("/auth/login", { username: "admin' OR '1'='1", password: "' OR '1'='1" })).status, 401);
+  assert.equal((await get(`/assignments?date=${encodeURIComponent("2026-01-01' OR 1=1 --")}`, T.admin)).status, 400);
+  const inj = await post("/users", { name: "'); DROP TABLE users; --", username: "inj_test", password: "123456" }, T.admin);
+  assert.equal(inj.status, 201); assert.equal(inj.body.name, "'); DROP TABLE users; --");
+  assert.equal((await get("/users", T.admin)).status, 200, "ตาราง users ยังอยู่");
+  // XSS: เก็บเป็นข้อความธรรมดา (หน้าเว็บ React แสดงเป็นตัวอักษร ไม่รันสคริปต์)
+  const xss = await put(`/users/${inj.body.id}`, { name: "<img src=x onerror=alert(1)>", username: "inj_test" }, T.admin);
+  assert.equal(xss.body.name, "<img src=x onerror=alert(1)>");
+  await del(`/users/${inj.body.id}`, T.admin);
+
+  // ข้อมูลยาว/ผิดรูปแบบ -> 400 (ไม่ใช่ 500)
+  assert.equal((await post("/users", { name: "ก".repeat(101), username: "longname", password: "123456" }, T.admin)).status, 400);
+  assert.equal((await post("/users", { name: "x y", username: "phone1", password: "123456", phone: "<script>" }, T.admin)).status, 400);
+  assert.equal((await post("/users", { name: "x y", username: "pw1", password: "a".repeat(73) }, T.admin)).status, 400);
+  assert.equal((await post("/locations", { name: "x", lat: "", lng: "" }, T.admin)).status, 400, "พิกัดว่างต้องไม่กลายเป็น 0,0");
+  assert.equal((await post("/locations", { name: "x", lat: 13, lng: 100, contact_phone: "abc" }, T.admin)).status, 400);
+  assert.equal((await post("/locations", { name: "ก".repeat(101), lat: 13, lng: 100 }, T.admin)).status, 400);
+
+  // จัดเวรให้ admin ไม่ได้
+  assert.equal((await post("/assignments", { userId: ID.admin, locationId: 4, date: day(40), shift: "MORNING" }, T.admin)).status, 400);
+});
+
+test("concurrency: กดพร้อมกันต้องไม่เกินจำนวนคน / อนุมัติลาซ้อน", async () => {
+  const loc = await post("/locations", { name: "จุดแย่งกัน", lat: 13.7, lng: 100.5, need_morning: 1, need_afternoon: 1, need_night: 1 }, T.admin);
+  const date = day(45);
+  const users = [ID.somchai, ID.somying, ID.wichai, ID.suda, ID.prayut, ID.malee, ID.thana];
+  const rs = await Promise.all(users.map((u) => post("/assignments", { userId: u, locationId: loc.body.id, date, shift: "NIGHT", force: true }, T.admin)));
+  const codes = rs.map((r) => r.status).sort();
+  assert.equal(codes.filter((c) => c === 201).length, 1, `ต้องสำเร็จ 1 คนเท่านั้น ได้ ${codes}`);
+  assert.ok(rs.filter((r) => r.status !== 201).every((r) => r.status === 409));
+  assert.equal((await get(`/assignments?date=${date}&shift=NIGHT`, T.admin)).body.filter((a) => a.location_id === loc.body.id).length, 1);
+
+  // คนเดียวกันถูกจัดพร้อมกัน 2 จุด -> ได้จุดเดียว
+  const loc2 = await post("/locations", { name: "จุดแย่งกัน 2", lat: 13.7, lng: 100.5, need_morning: 3 }, T.admin);
+  const loc3 = await post("/locations", { name: "จุดแย่งกัน 3", lat: 13.7, lng: 100.5, need_morning: 3 }, T.admin);
+  const same = await Promise.all([loc2, loc3].map((l) => post("/assignments", { userId: ID.thana, locationId: l.body.id, date, shift: "MORNING", force: true }, T.admin)));
+  assert.deepEqual(same.map((r) => r.status).sort(), [201, 409]);
+
+  // อนุมัติลาพร้อมกัน 2 ครั้ง -> สำเร็จครั้งเดียว
+  const lv = await post("/me/leaves", { type: "PERSONAL", start: day(44), end: day(46) }, T.thana);
+  const two = await Promise.all([1, 2].map(() => patch(`/leaves/${lv.body.id}`, { status: "APPROVED" }, T.admin)));
+  assert.deepEqual(two.map((r) => r.status).sort(), [200, 409]);
+  const done = (await get(`/leaves/${lv.body.id}`, T.admin)).body;
+  assert.equal(done.removed.length, 1, "ถอนเวรของธนาออก 1 กะ");
+
+  for (const l of [loc, loc2, loc3]) await del(`/locations/${l.body.id}`, T.admin);
 });
 
 test("ไฟล์ใหญ่เกิน + ลบจุดทดสอบ", async () => {

@@ -36,6 +36,7 @@ const ALREADY = {
   "002-add-incidents.sql": () => hasTable("incidents"),
   "003-add-leaves.sql": () => hasTable("leaves"),
   "004-add-check-in.sql": () => hasColumn("assignments", "check_in_at"),
+  "005-add-token-version.sql": () => hasColumn("users", "token_version"),
 };
 
 const [doneRows] = await conn.query("SELECT name FROM schema_migrations");

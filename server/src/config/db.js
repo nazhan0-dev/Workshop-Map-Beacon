@@ -17,3 +17,23 @@ export async function query(sql, params = []) {
   const [rows] = await pool.query(sql, params);
   return rows;
 }
+
+/**
+ * ทำหลายคำสั่งเป็นก้อนเดียว (สำเร็จทั้งหมดหรือยกเลิกทั้งหมด)
+ * fn ได้ q(sql, params) ที่วิ่งบน connection เดียวกันในทรานแซกชัน
+ */
+export async function transaction(fn) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const q = async (sql, params = []) => (await conn.query(sql, params))[0];
+    const result = await fn(q);
+    await conn.commit();
+    return result;
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}

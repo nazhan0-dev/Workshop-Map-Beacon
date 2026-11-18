@@ -1,5 +1,5 @@
 // การลา: ตัวช่วยที่ใช้ร่วมกันระหว่างฝั่ง รปภ. กับ admin
-import { query } from "../config/db.js";
+import { query, transaction } from "../config/db.js";
 import { HttpError } from "../middlewares/error.js";
 import { SHIFTS, SHIFT_INFO, isDateStr, toDateStr, addDays, adjacentShifts } from "./shifts.js";
 
@@ -48,8 +48,8 @@ export function parseRange({ start, end, shifts }) {
 }
 
 // เวรของคนนี้ที่อยู่ในช่วงลา
-export function affectedAssignments(userId, { start, end, shifts }) {
-  return query(
+export function affectedAssignments(userId, { start, end, shifts }, q = query) {
+  return q(
     `SELECT a.id, a.date, a.shift, a.location_id, l.name AS location_name
      FROM assignments a JOIN locations l ON l.id = a.location_id
      WHERE a.user_id = ? AND a.date BETWEEN ? AND ? ${shifts ? "AND a.shift IN (?)" : ""}
@@ -61,13 +61,18 @@ export function affectedAssignments(userId, { start, end, shifts }) {
 // อนุมัติ: ถอนคนออกจากเวรในช่วงลา แล้วเก็บรายการไว้หาคนแทน
 export async function approveLeave(leave, byUserId, note = null, auto = false) {
   const range = { start: leave.start_date, end: leave.end_date, shifts: leave.shifts };
-  const rows = await affectedAssignments(leave.user_id, range);
-  if (rows.length) await query("DELETE FROM assignments WHERE id IN (?)", [rows.map((r) => r.id)]);
-  const removed = rows.map(({ date, shift, location_id, location_name }) => ({ date, shift, location_id, location_name }));
-  await query(
-    `UPDATE leaves SET status = 'APPROVED', auto = ?, removed = ?, decided_by = ?, decided_at = NOW(), decide_note = ? WHERE id = ?`,
-    [auto ? 1 : 0, JSON.stringify(removed), byUserId, note, leave.id]
-  );
+  // ถอนเวร + อัปเดตคำขอ ต้องสำเร็จพร้อมกัน (ล็อกคำขอไว้ กันกดอนุมัติซ้อนกัน)
+  await transaction(async (q) => {
+    const [cur] = await q("SELECT status FROM leaves WHERE id = ? FOR UPDATE", [leave.id]);
+    if (cur.status !== "PENDING") throw new HttpError(409, "คำขอนี้ตัดสินไปแล้ว");
+    const rows = await affectedAssignments(leave.user_id, range, q);
+    if (rows.length) await q("DELETE FROM assignments WHERE id IN (?)", [rows.map((r) => r.id)]);
+    const removed = rows.map(({ date, shift, location_id, location_name }) => ({ date, shift, location_id, location_name }));
+    await q(
+      `UPDATE leaves SET status = 'APPROVED', auto = ?, removed = ?, decided_by = ?, decided_at = NOW(), decide_note = ? WHERE id = ?`,
+      [auto ? 1 : 0, JSON.stringify(removed), byUserId, note, leave.id]
+    );
+  });
   return getLeave(leave.id);
 }
 

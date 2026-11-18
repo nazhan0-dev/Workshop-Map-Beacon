@@ -82,13 +82,14 @@ function WelcomePanel() {
 }
 
 export default function LoginPage() {
-  const { user, login } = useAuthStore();
+  const { user, login, expired } = useAuthStore();
   const navigate = useNavigate();
   const formRef = useRef(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
-  const [error, setError] = useState("");
+  // ถูกเด้งออกเพราะเซสชันหมดอายุหรือถูกยกเลิก (เช่น เปลี่ยนรหัสจากอีกเครื่อง) -> บอกเหตุผล
+  const [error, setError] = useState(() => (expired ? "เซสชันหมดอายุหรือถูกยกเลิก กรุณาเข้าสู่ระบบใหม่" : ""));
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [caps, setCaps] = useState(false);
