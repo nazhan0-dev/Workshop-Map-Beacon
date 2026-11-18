@@ -101,7 +101,7 @@ export default function ProfilePage() {
           </span>
           <h1 className="text-xl font-bold mt-3">{user.name}</h1>
           <div className="flex items-center gap-2 mt-1 text-sm text-mute">
-            <span>@{user.username}</span>
+            <span>{user.username.includes("@") ? "" : "@"}{user.username}</span>
             {isUser ? <RankBadge rank={user.rank} /> : <span className="flex items-center gap-1 text-xs font-semibold text-brand"><ShieldCheck size={13} />ผู้ดูแลระบบ</span>}
           </div>
         </div>

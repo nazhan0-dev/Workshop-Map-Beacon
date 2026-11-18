@@ -1,6 +1,6 @@
 -- ไฟล์ติดตั้งฐานข้อมูลแบบรันใน MySQL Workbench ได้เลย
 -- เปิดไฟล์นี้ใน Workbench (File > Open SQL Script) แล้วกดปุ่มสายฟ้า ⚡ เพื่อรันทั้งหมด
--- บัญชีตัวอย่าง: admin / admin1234  และ  somchai / 123456
+-- บัญชีตัวอย่าง: admin@beacon.com / admin1234  และ  nas@beacon.com / 123456
 
 CREATE DATABASE IF NOT EXISTS workshop_map CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE workshop_map;
@@ -105,14 +105,14 @@ CREATE TABLE IF NOT EXISTS leaves (
 
 
 INSERT INTO users (name, username, password_hash, role, `rank`, position, phone) VALUES
- ("ผู้ดูแลระบบ","admin","$2b$10$kM2A8./4PAGr/kop/Wkhm.fEwYh2OLF3ECjFrnB1fIhxPevdIxFMm","ADMIN","STAFF","ผู้ดูแลระบบ","080-000-0000"),
- ("สมชาย ใจดี","somchai","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","HEAD",NULL,"081-111-1111"),
- ("สมหญิง รักงาน","somying","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","DEPUTY",NULL,"081-222-2222"),
- ("วิชัย มานะ","wichai","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","STAFF",NULL,"081-333-3333"),
- ("สุดา สวยงาม","suda","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","STAFF",NULL,"081-444-4444"),
- ("ประยุทธ ขยัน","prayut","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","DEPUTY",NULL,"081-555-5555"),
- ("มาลี ยิ้มแย้ม","malee","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","STAFF",NULL,"081-666-6666"),
- ("ธนา ใจกล้า","thana","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","HEAD",NULL,"081-777-7777");
+ ("ผู้ดูแลระบบ","admin@beacon.com","$2b$10$kM2A8./4PAGr/kop/Wkhm.fEwYh2OLF3ECjFrnB1fIhxPevdIxFMm","ADMIN","STAFF","ผู้ดูแลระบบ","080-000-0000"),
+ ("นัส","nas@beacon.com","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","HEAD",NULL,"081-111-1111"),
+ ("นิฟ","nif@beacon.com","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","DEPUTY",NULL,"081-222-2222"),
+ ("อา","ar@beacon.com","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","STAFF",NULL,"081-333-3333"),
+ ("ยานี","yanee@beacon.com","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","STAFF",NULL,"081-444-4444"),
+ ("ริส","ris@beacon.com","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","DEPUTY",NULL,"081-555-5555"),
+ ("นัสรีน","nasreen@beacon.com","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","STAFF",NULL,"081-666-6666"),
+ ("นิส","nis@beacon.com","$2b$10$yGeSzQJRDcmPBrLL2xHIvepRhqOgq7BYoWaBO5iBXfIrClKK21y..","USER","HEAD",NULL,"081-777-7777");
 
 INSERT INTO locations (name, lat, lng, duties, cautions, contact_phone, need_morning, need_afternoon, need_night) VALUES
  ("ประตูทางเข้าหลัก",13.7651,100.5066,"ตรวจบัตรผู้มาติดต่อทุกคน แลกบัตรก่อนเข้าอาคาร","ห้ามจอดรถขวางทางเข้า","02-111-1234",2,2,2),

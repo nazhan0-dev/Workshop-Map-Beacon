@@ -135,7 +135,7 @@ export default function AdminLayout() {
                 <span className="w-11 h-11 rounded-full bg-ink text-white text-sm font-bold flex items-center justify-center shrink-0">{initials(user?.name)}</span>
                 <div className="min-w-0">
                   <div className="font-semibold truncate">{user?.name}</div>
-                  <div className="text-xs text-mute truncate">@{user?.username}</div>
+                  <div className="text-xs text-mute truncate">{user?.username?.includes("@") ? "" : "@"}{user?.username}</div>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 mt-2 mx-1 text-xs font-semibold text-brand bg-brand-soft rounded-lg px-2.5 py-1.5">

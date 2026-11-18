@@ -138,7 +138,7 @@ export default function StaffPage() {
                     {u.id === me.id && <span className="text-[10px] font-bold text-brand bg-brand-soft rounded px-1.5 py-0.5 shrink-0">คุณ</span>}
                   </div>
                   <div className="flex items-center gap-x-2 gap-y-1 flex-wrap mt-0.5 text-xs text-mute">
-                    <span>@<Hl text={u.username} q={needle} /></span>
+                    <span>{u.username.includes("@") ? "" : "@"}<Hl text={u.username} q={needle} /></span>
                     {u.role === "ADMIN"
                       ? <span className="font-semibold rounded-md px-1.5 py-0.5 bg-ink text-white">ผู้ดูแลระบบ</span>
                       : <RankBadge rank={u.rank} />}
@@ -170,7 +170,7 @@ export default function StaffPage() {
         {form && (
           <form id="staff-form" onSubmit={save} className="flex flex-col gap-4">
             <Field label="ชื่อ-นามสกุล"><input className={inputCls} value={form.name} onChange={set("name")} required autoFocus /></Field>
-            <Field label="ชื่อผู้ใช้" hint="ใช้เข้าสู่ระบบ ภาษาอังกฤษหรือตัวเลข"><input className={inputCls} value={form.username} onChange={set("username")} required autoCapitalize="none" /></Field>
+            <Field label="ชื่อผู้ใช้" hint="ใช้เข้าสู่ระบบ ภาษาอังกฤษ ตัวเลข หรืออีเมล เช่น nas@beacon.com"><input className={inputCls} value={form.username} onChange={set("username")} required autoCapitalize="none" /></Field>
             {!form.id && <Field label="รหัสผ่านเริ่มต้น" hint="อย่างน้อย 6 ตัว แจ้งพนักงานให้เปลี่ยนเองภายหลัง"><input className={inputCls} type="text" value={form.password} onChange={set("password")} required minLength={6} /></Field>}
             {form.role === "USER" && (
               <div>

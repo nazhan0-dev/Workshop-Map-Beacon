@@ -14,8 +14,9 @@ function pickBody(body = {}) {
   const username = String(body.username || "").trim().toLowerCase();
   const role = body.role === "ADMIN" ? "ADMIN" : "USER";
   const rank = RANKS.includes(body.rank) ? body.rank : "STAFF";
-  if (!/^[a-z0-9_.]{3,50}$/.test(username)) {
-    throw new HttpError(400, "ชื่อผู้ใช้ต้องเป็นภาษาอังกฤษหรือตัวเลข 3–50 ตัว");
+  // ชื่อผู้ใช้: ภาษาอังกฤษ/ตัวเลข หรืออีเมล เช่น nas หรือ nas@beacon.com
+  if (username.length < 3 || username.length > 50 || !/^[a-z0-9_.+-]+(@[a-z0-9-]+(\.[a-z0-9-]+)+)?$/.test(username)) {
+    throw new HttpError(400, "ชื่อผู้ใช้ต้องเป็นภาษาอังกฤษ ตัวเลข หรืออีเมล 3–50 ตัว");
   }
   return {
     name, username, role, rank,

@@ -37,14 +37,14 @@ const userHash = await bcrypt.hash("123456", 10);
 await conn.query(
   "INSERT INTO users (name, username, password_hash, role, `rank`, position, phone) VALUES ?",
   [[
-    ["ผู้ดูแลระบบ", "admin", adminHash, "ADMIN", "STAFF", "ผู้ดูแลระบบ", "080-000-0000"],
-    ["สมชาย ใจดี", "somchai", userHash, "USER", "HEAD", null, "081-111-1111"],
-    ["สมหญิง รักงาน", "somying", userHash, "USER", "DEPUTY", null, "081-222-2222"],
-    ["วิชัย มานะ", "wichai", userHash, "USER", "STAFF", null, "081-333-3333"],
-    ["สุดา สวยงาม", "suda", userHash, "USER", "STAFF", null, "081-444-4444"],
-    ["ประยุทธ ขยัน", "prayut", userHash, "USER", "DEPUTY", null, "081-555-5555"],
-    ["มาลี ยิ้มแย้ม", "malee", userHash, "USER", "STAFF", null, "081-666-6666"],
-    ["ธนา ใจกล้า", "thana", userHash, "USER", "HEAD", null, "081-777-7777"],
+    ["ผู้ดูแลระบบ", "admin@beacon.com", adminHash, "ADMIN", "STAFF", "ผู้ดูแลระบบ", "080-000-0000"],
+    ["นัส", "nas@beacon.com", userHash, "USER", "HEAD", null, "081-111-1111"],
+    ["นิฟ", "nif@beacon.com", userHash, "USER", "DEPUTY", null, "081-222-2222"],
+    ["อา", "ar@beacon.com", userHash, "USER", "STAFF", null, "081-333-3333"],
+    ["ยานี", "yanee@beacon.com", userHash, "USER", "STAFF", null, "081-444-4444"],
+    ["ริส", "ris@beacon.com", userHash, "USER", "DEPUTY", null, "081-555-5555"],
+    ["นัสรีน", "nasreen@beacon.com", userHash, "USER", "STAFF", null, "081-666-6666"],
+    ["นิส", "nis@beacon.com", userHash, "USER", "HEAD", null, "081-777-7777"],
   ]]
 );
 
@@ -74,6 +74,6 @@ await conn.query(
 );
 
 console.log("✓ ใส่ข้อมูลตัวอย่างแล้ว");
-console.log("  ผู้ดูแล:  admin / admin1234");
-console.log("  รปภ.:    somchai / 123456 (และคนอื่นๆ รหัส 123456)");
+console.log("  ผู้ดูแล:  admin@beacon.com / admin1234");
+console.log("  รปภ.:    nas@beacon.com / 123456 (และคนอื่นๆ รหัส 123456)");
 await conn.end();
